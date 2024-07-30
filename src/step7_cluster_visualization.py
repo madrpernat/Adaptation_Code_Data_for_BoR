@@ -1,7 +1,10 @@
 import distinctipy
 import os
+
+import numpy as np
 import pandas as pd
 
+from src.utils import ids
 from src.utils.functions_library import create_cumulative_timeseries_som_view
 
 
@@ -25,8 +28,16 @@ def main():
         filepath_or_buffer='data/neuron_clusters.csv'
     )
 
-    # CUMULATIVE TIMESERIES VISUALIZATION COLORED BY CLUSTER
+    # REWRITE 500_SOW_INFO.CSV TO INCLUDE A 'CLUSTER' COLUMN
+    five_hundred_sow_info[ids.SOW] = np.arange(1, 501)
+    merged_df = five_hundred_sow_info.merge(neuron_cluster_mapping, on=ids.NEURON)
+    merged_df = merged_df.sort_values(by=ids.SOW)
+    merged_df.to_csv(
+        path_or_buf='output/python_output/500_sow_info.csv',
+        index=False
+    )
 
+    # CUMULATIVE TIMESERIES VIEW OF SOM COLORED BY CLUSTER
     cluster_colors = distinctipy.get_colors(12)  # The clustering configuration has 12 clusters
     neuron_colors = [cluster_colors[i] for i in neuron_cluster_mapping['Cluster']]
 
@@ -45,3 +56,4 @@ def main():
 
 if __name__ == '__main__':
     main()
+

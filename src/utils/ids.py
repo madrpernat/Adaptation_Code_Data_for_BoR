@@ -13,4 +13,6 @@ IQR_FLOW = 'IQR'
 DRIEST_10_YEAR_FLOW = 'Driest10yr'
 WETTEST_10_YEAR_FLOW = 'Wettest10yr'
 NEURON = 'Neuron'
+SOW = 'SOW'
+CLUSTER = 'Cluster'
 
