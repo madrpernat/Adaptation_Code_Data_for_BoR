@@ -1,5 +1,6 @@
 import numpy as np
 import pandas as pd
+import os
 from sklearn.preprocessing import scale
 
 from src.utils import ids
@@ -7,6 +8,11 @@ from src.utils.functions_library import calculate_trace_metrics
 
 
 def main():
+
+    # Set working directory
+    current_dir = os.path.dirname(__file__)
+    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+    os.chdir(parent_dir)
 
     # Constants
     traces_timeseries_file = "../data/traces_timeseries.csv"

@@ -3,6 +3,7 @@ import numpy as np
 import matplotlib
 import matplotlib.pyplot as plt
 from matplotlib.patches import Patch
+import os
 
 from src.utils.functions_library import variable_distribution_comparison_plot
 from src.utils.clhs import clhs
@@ -12,6 +13,11 @@ matplotlib.use('Qt5Agg')
 
 
 def main():
+
+    # Set working directory
+    current_dir = os.path.dirname(__file__)
+    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+    os.chdir(parent_dir)
 
     # Perform Uniform Conditioned Latin Hypercube Sampling to decrease the full-factorial SOW ensemble down to 500 SOWs
 
@@ -29,8 +35,10 @@ def main():
 
     ## Create df of only the SOW characteristics you want to stratify. Including 'Neuron' as a characteristic ensures
     ## that there is equally sampling among the SOM's neurons.
-    variables = [ids.MEDIAN_FLOW, ids.MAX_ANNUAL_FLOW, ids.MIN_ANNUAL_FLOW, ids.IQR_FLOW, ids.DRIEST_10_YEAR_FLOW,
-                 ids.WETTEST_10_YEAR_FLOW, ids.DEMAND, ids.INIT_STORAGE, ids.NEURON]
+    variables = [
+        ids.MEDIAN_FLOW, ids.MAX_ANNUAL_FLOW, ids.MIN_ANNUAL_FLOW, ids.IQR_FLOW, ids.DRIEST_10_YEAR_FLOW,
+        ids.WETTEST_10_YEAR_FLOW, ids.DEMAND, ids.INIT_STORAGE, ids.NEURON
+    ]
     clhs_df = full_factorial_sow_info[variables]
 
     ## Generate uniform cLHS samples. The objective function consists of three components:
@@ -119,7 +127,7 @@ def main():
     )
 
     fig.savefig(
-        fname='output/python_output/full_factorial_vs_500_ensemble_variable_distributions.png',
+        fname='output/python_output/figs/full_factorial_vs_500_ensemble_variable_distributions.png',
         dpi=400,
         bbox_inches='tight'
     )
