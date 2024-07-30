@@ -3,9 +3,11 @@ import matplotlib
 import matplotlib.pyplot as plt
 import matplotlib.colors as mcolors
 import matplotlib.patches as patches
+from matplotlib.gridspec import GridSpec
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from scipy.cluster.hierarchy import dendrogram
 
 from src.utils import ids
 
@@ -189,6 +191,99 @@ def get_subplot_coordinates(
     return int(x * scale), int(y)
 
 
+def create_cumulative_timeseries_som_view(
+        five_hundred_sow_info: pd.DataFrame,
+        five_hundred_sow_cumulative_timeseries: pd.DataFrame,
+        colors: [str]
+):
+
+    sim_years = np.arange(2027, 2057)
+
+    fig = plt.figure(figsize=(19, 9.5))
+    gs = GridSpec(
+        nrows=4,
+        ncols=28,  # double number of columns to allow for shifting of rows
+        figure=fig
+    )
+
+    ## Plotting loop
+    neurons = np.unique(five_hundred_sow_info[ids.NEURON])
+
+    for neuron in neurons:
+        x, y = get_subplot_coordinates(neuron=neuron)
+        ax = fig.add_subplot(gs[x, y:y + 2])
+
+        ## Determine which SOWs are in neuron and which are not
+        indices = five_hundred_sow_info.index[five_hundred_sow_info["Neuron"] == neuron]
+        non_indices = five_hundred_sow_info.index[five_hundred_sow_info["Neuron"] != neuron]
+
+        plot_cumulative_timeseries(
+            sim_years=sim_years,
+            cumulative_timeseries=five_hundred_sow_cumulative_timeseries,
+            indices=indices,
+            non_indices=non_indices,
+            ax=ax,
+            color=colors[neuron - 1]
+        )
+        ax.set_title(
+            label="Neuron " + str(neuron),
+            y=1.0,
+            pad=-14,
+            fontsize=11,
+            fontweight="bold"
+        )
+
+        ## For plots on the bottom, add x-axis tick labels
+        if x == 3:
+            ax.tick_params(
+                labelbottom=True,
+                bottom=True,
+                length=0
+            )
+            ax.set_xticks(
+                ticks=[2027, 2042, 2056]
+            )
+            ax.set_xticklabels(
+                labels=[2027, 2042, 2056],
+                fontsize=13,
+                rotation=45
+            )
+            ax.set_xlabel(
+                xlabel="Year",
+                fontsize=16
+            )
+
+        ## For plots on the left, add y-axis tick labels
+        if y == 0 or y == 1:
+            ax.tick_params(
+                left=True,
+                labelleft=True,
+                length=0
+            )
+            ax.set_yticks(
+                ticks=[0, 200, 400]
+            )
+            ax.set_yticklabels(
+                labels=[0, 200, 400],
+                fontsize=13
+            )
+            ax.set_ylabel(
+                ylabel="Cumulative\nTimeseries (MAF)",
+                fontsize=14
+            )
+
+    fig.subplots_adjust(
+        wspace=0.6,
+        hspace=0.1,
+        left=0.05,
+        right=0.95,
+        top=0.95,
+        bottom=0.07
+    )
+
+    return fig
+
+
 def plot_cumulative_timeseries(
         sim_years: np.array,
         cumulative_timeseries: pd.DataFrame,
@@ -239,7 +334,7 @@ def plot_cumulative_timeseries(
     )
 
 
-def plot_som_characteristic_view(
+def create_som_characteristic_view(
         characteristic_title: str,
         neuron_values: [float],
         neuron_coordinates: pd.DataFrame,
@@ -327,7 +422,6 @@ def plot_som_characteristic_view(
         cbar.ax.invert_xaxis()
 
     # Set limits and turn off axes
-    #ax.set_title('SOW Self-Organizing Map', fontsize=35, pad=0.1)
     ax.set_xlim([0, 2 * hex_radius * grid_width + 2])
     ax.set_ylim([0, 2 * hex_radius * grid_height + 1])
     ax.axis('off')
@@ -338,7 +432,9 @@ def plot_som_characteristic_view(
         top=0.965,
         bottom=0.151
     )
+
     fig.suptitle('SOW Self-Organizing Map', fontsize=35, y=0.835)
+
     return fig
 
 
@@ -379,3 +475,31 @@ def get_text_color_for_neuron(rgba):
     return 'black' if luminance > 0.28 else 'white'
 
 
+def create_and_save_dendrogram(
+        linkage_name: str,
+        z: np.ndarray,
+        neuron_labels: np.ndarray,
+        filename: str
+):
+    # Create a new figure
+    plt.figure(figsize=(19, 9.5))
+
+    # Plot the dendrogram
+    dendrogram(
+        Z=z,
+        labels=neuron_labels
+    )
+
+    # Add labels
+    plt.title(linkage_name)
+    plt.xlabel('Neuron')
+
+    # Save the figure
+    plt.savefig(
+        fname=filename,
+        dpi=400,
+        bbox_inches='tight'
+    )
+
+    # Close the figure
+    plt.close()
