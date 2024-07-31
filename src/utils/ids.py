@@ -15,4 +15,4 @@ WETTEST_10_YEAR_FLOW = 'Wettest10yr'
 NEURON = 'Neuron'
 SOW = 'SOW'
 CLUSTER = 'Cluster'
-
+EXPERIMENT = 'Experiment'
