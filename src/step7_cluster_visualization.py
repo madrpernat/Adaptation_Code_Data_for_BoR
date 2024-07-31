@@ -28,11 +28,14 @@ def main():
         filepath_or_buffer='data/neuron_clusters.csv'
     )
 
-    # REWRITE 500_SOW_INFO.CSV TO INCLUDE A 'CLUSTER' COLUMN
+    # REWRITE 500_SOW_INFO.CSV TO INCLUDE 'SOW' and 'CLUSTER' COLUMNS
     five_hundred_sow_info[ids.SOW] = np.arange(1, 501)
+
     merged_df = five_hundred_sow_info.merge(neuron_cluster_mapping, on=ids.NEURON)
     merged_df = merged_df.sort_values(by=ids.SOW)
-    merged_df.to_csv(
+
+    column_order = [ids.SOW] + [col for col in merged_df.columns if col != ids.SOW]
+    merged_df[column_order].to_csv(
         path_or_buf='output/python_output/500_sow_info.csv',
         index=False
     )

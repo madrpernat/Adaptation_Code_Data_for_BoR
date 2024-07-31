@@ -1,9 +1,15 @@
+import os
 import pandas as pd
 
 from src.utils import ids
 
 
 def main():
+
+    # Set working directory
+    current_dir = os.path.dirname(__file__)
+    parent_dir = os.path.abspath(os.path.join(current_dir, os.pardir))
+    os.chdir(parent_dir)
 
     five_hundred_sow_info = pd.read_csv(
         filepath_or_buffer='output/python_output/500_sow_info.csv'
