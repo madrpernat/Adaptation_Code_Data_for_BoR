@@ -1,3 +1,8 @@
+require(devtools)
+library(ComplexHeatmap)
+library(tidyr)
+library(patchwork)
+library(xml2)
 library(plyr)
 library(kohonen)
 library(lhs)
@@ -9,6 +14,7 @@ library(htmlwidgets)
 library(data.table)
 library(plotrix)
 library(readxl)
+library(circlize)
 
 ############################# SOM HELPER FUNCTIONS #############################
 ##################### Coded by Nathan Bonham - March 2022 ######################
@@ -97,50 +103,86 @@ unit.distances=function (grid, toroidal) # taken from Kohonen source code
   }
 }
 
+
 ################################################################################
 
-condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_mead_tiers){
+# This function parses the archive file assuming that columns are in the 
+# following order: decision variables, objectives, constraints, metrics.
+condense_policies <- function(
+    
+    borg_directory, 
+    archive_file_name, 
+    xml_file_name, 
+    n_powell_tiers, 
+    n_mead_tiers
+    
+  ){
   
-  archive_file_path = paste0(directory, archive_file_name)
+  # Get objective, metric, and constraint info from xml file
+  xml_file_path <- paste0(borg_directory, '/', xml_file_name)
+  xml_info <- get_xml_info(xml_file_path)
+  
+  objectives <- xml_info$objectives
+  metrics <- xml_info$metrics
+  constraints <- xml_info$constraints
+  
+  n_objectives <- length(objectives)
+  n_metrics <- length(metrics)
+  n_constraints <- length(constraints)
+  
+  
+  # Read in archive file
+  archive_file_path = paste0(borg_directory, archive_file_name)
   archive_df <- read.table(archive_file_path, header=TRUE)
   
-  # Get column indices
-  PTierEl_first <- grep("Powell_Tier_Elevation_DV.Row.0", colnames(archive_df))
-  PTierEl_last <- PTierEl_first + n_powell_tiers - 1
+
   
-  PRels_first <- grep("Powell_Primary_Release_Volume_DV.Row.0", colnames(archive_df))
-  PRels_last <- PRels_first + n_powell_tiers - 1
+  # Get column indices for decision variables
+  dv_indices <- get_dv_indices(
+    condensed = FALSE,
+    col_names = colnames(archive_df),
+    n_powell_tiers = n_powell_tiers,
+    n_mead_tiers = n_mead_tiers
+  )
+  ## Powell DVs
+  PTierEl_idx <- dv_indices$PTierEl
+  PRels_idx <- dv_indices$PRels
+  MeadRefs_idx <- dv_indices$MeadRefs
+  BalMaxOffset_idx <- dv_indices$BalMaxOffset
+  BalMinOffset_idx <- dv_indices$BalMinOffset
   
-  MeadRefs_first <- grep("Powell_Mead_Reference_Elevation_DV.Row.0", colnames(archive_df))
-  MeadRefs_last <- MeadRefs_first + n_powell_tiers - 1
+  ## Mead DVs
+  MeadSurplus_idx <- dv_indices$MeadSurplus
+  MeadEl_idx <- dv_indices$MeadEl
+  MeadV_idx <- dv_indices$MeadV
   
-  BalMaxOffset_first <- grep("Powell_Balance_Max_Offset_DV.Row.0", colnames(archive_df))
-  BalMaxOffset_last <- BalMaxOffset_first + n_powell_tiers - 1
+  # Get number of DV columns
+  n_powell_columns <- length(
+    c(PTierEl_idx, PRels_idx, MeadRefs_idx, BalMaxOffset_idx, BalMinOffset_idx)
+  )
+  n_mead_columns <- length(
+    c(MeadSurplus_idx, MeadEl_idx, MeadV_idx)
+  )
+  n_dvs <- n_powell_columns + n_mead_columns
   
-  BalMinOffset_first <- grep("Powell_Balance_Min_Offset_DV.Row.0", colnames(archive_df))
-  BalMinOffset_last <- BalMinOffset_first + n_powell_tiers - 1
+  # Drop the constraints columns
+  if (n_constraints > 0){
+    
+    constraint_start <- n_dvs + n_objectives + 1
+    constraint_end <- constraint_start + n_constraints - 1
+    
+    archive_df <- archive_df[, -c(constraint_start:constraint_end)]
+  }
+
   
-  MeadSurplus_idx <- grep("Mead_Surplus_DV", colnames(archive_df))
-  
-  MeadEl_first <- grep("Mead_Shortage_e_DV.Row.0", colnames(archive_df))
-  MeadEl_last <- MeadEl_first + n_mead_tiers - 1
-  
-  MeadV_first <- grep("Mead_Shortage_V_DV.Row.0", colnames(archive_df))
-  MeadV_last <- MeadV_first + n_mead_tiers - 1
-  
-  n_powell_columns <- 5 * n_powell_tiers  # 5 attributes per tier
-  n_mead_columns <- 2 * n_mead_tiers + 1  # 2 attributes per tier, plus surplus tier
-  
-  
-  ## Create a Powell dataframe (PTiering) for each policy
-  
+  # Create a Powell dataframe (PTiering) for each policy
   for (j in 1:nrow(archive_df)){
     
-    PTierEl = t(archive_df[j, PTierEl_first:PTierEl_last])
-    PRels = t(archive_df[j, PRels_first:PRels_last])
-    MeadRefs = t(archive_df[j, MeadRefs_first:MeadRefs_last])
-    BalMaxOffset = t(archive_df[j, BalMaxOffset_first:BalMaxOffset_last])
-    BalMinOffset = t(archive_df[j, BalMinOffset_first:BalMinOffset_last])
+    PTierEl = t(archive_df[j, PTierEl_idx])
+    PRels = t(archive_df[j, PRels_idx])
+    MeadRefs = t(archive_df[j, MeadRefs_idx])
+    BalMaxOffset = t(archive_df[j, BalMaxOffset_idx])
+    BalMinOffset = t(archive_df[j, BalMinOffset_idx])
     
     PTiering = as.data.frame(cbind(
       PTierEl, 
@@ -168,7 +210,7 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
     # Reference Elevations, Min Offset, Max Offset, and Primary Release values
     # (columns 2-5) to that of the row with the highest Primary Release volume.
     for (i in 1:(nrow(PTiering) - 1)){
-      #i=1
+    
       if (PTiering[i,1] == PTiering[i+1,1]){
         PTiering[i+1,2] = PTiering[i,2]
         PTiering[i+1,3] = PTiering[i,3]
@@ -188,8 +230,9 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
     # range)
     if (PTiering[nrow(PTiering), 1] == 3370 && PTiering[1, 1] != 3370){
       
-      next_min = which(PTiering[, 1] == 
-                         min(PTiering$PTierEl[PTiering$PTierEl > 3370]))
+      next_min = which(
+        PTiering[, 1] == min(PTiering$PTierEl[PTiering$PTierEl > 3370])
+      )
       
       PTiering[next_min,"MeadRefEl"] = PTiering[next_min,"PRels"] = 99999999
       
@@ -255,25 +298,25 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
     
     # Distribute columns of PTiering back into a single row and combine w/ 
     # un-condensed mead variables & objective values
-    archive_df[j, PTierEl_first:PTierEl_last] = t(PTiering$PTierEl)
-    archive_df[j, MeadRefs_first:MeadRefs_last] = t(PTiering$MeadRefEl)
-    archive_df[j, BalMaxOffset_first:BalMaxOffset_last] = t(PTiering$BalMaxOffset)
-    archive_df[j, BalMinOffset_first:BalMinOffset_last] = t(PTiering$BalMinOffset)
-    archive_df[j, PRels_first:PRels_last] = t(PTiering$PRels)
+    archive_df[j, PTierEl_idx] = t(PTiering$PTierEl)
+    archive_df[j, MeadRefs_idx] = t(PTiering$MeadRefEl)
+    archive_df[j, BalMaxOffset_idx] = t(PTiering$BalMaxOffset)
+    archive_df[j, BalMinOffset_idx] = t(PTiering$BalMinOffset)
+    archive_df[j, PRels_idx] = t(PTiering$PRels)
   }
   
   # MEAD
   
   ## Tier elevations
-  short_elev = t(archive_df[, MeadEl_first:MeadEl_last])
+  short_elev = t(archive_df[, MeadEl_idx])
   
   ## Tier shortage volumes
-  archive_df[, MeadV_first:MeadV_last] = apply(
-    X = archive_df[, MeadV_first:MeadV_last], 
+  archive_df[, MeadV_idx] = apply(
+    X = archive_df[, MeadV_idx], 
     MARGIN = 2, 
     FUN = function(x) as.numeric(x)
   )
-  short_vol = archive_df[, MeadV_first:MeadV_last] / 1000
+  short_vol = archive_df[, MeadV_idx] / 1000
   short_vol = apply(short_vol, 1, rev) #reverse order of volumes
   
   # Initialize condensed dataframes
@@ -288,8 +331,10 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
       
       if (any(compressed_elev[j,i] == compressed_elev[-j,i])){
         
-        compressed_vol[j,i] = max(compressed_vol[which(compressed_elev[,i] == 
-                                                         compressed_elev[j,i]), i])
+        compressed_vol[j,i] = max(
+          compressed_vol[which(compressed_elev[,i] == compressed_elev[j,i]), i]
+        )
+        
       }
     }
   }
@@ -302,8 +347,10 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
       
       if (any(compressed_vol[j,i] == compressed_vol[-j,i])){
         
-        compressed_elev[j,i] = max(compressed_elev[which(compressed_vol[,i] == 
-                                                           compressed_vol[j,i]), i])
+        compressed_elev[j,i] = max(
+          compressed_elev[which(compressed_vol[,i] == compressed_vol[j,i]), i]
+        )
+        
       }
     }
   }
@@ -362,17 +409,11 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
   condensed_vol = apply(compressed_vol, 2, sort, decreasing=F)
   
   # Re-combine
-  
   condensed_policies = as.data.frame(rbind(condensed_elev, condensed_vol))
   
   row.names(condensed_policies) = row_names
   
   colnames(condensed_policies) = c(1:ncol(condensed_policies))
-  
-  # Turn 99999999 into 0 now that tables have been sorted **leaving this out for 
-  # now b/c may do policy plotting where anything w/ 9999999 is ignored
-  
-  # condensed_policies[condensed_policies==99999999] = 0
   
   condensed_policies = t(condensed_policies)
   
@@ -382,25 +423,21 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
   surplus_elev = 1200 - surplus_size
   
   # If surplus went away, replace 1200s w/ 99999999
-  
   surplus_elev[surplus_elev == 1200] = 99999999
   colnames(surplus_elev) = "surplus_elev"
   
   # Add surplus elevation to condensed policy df
-  
   condensed_policies_full = cbind(surplus_elev, condensed_policies)
   
-  # Replace Mead variables in original df w/ condensed variables
-  
+  # NEW ARCHIVE_DF
   archive_df = cbind(
-    condensed_policies_full,  # Mead DVs
-    archive_df[, PTierEl_first:PTierEl_last],           # Powell DVs
-    archive_df[, PRels_first:PRels_last],               # Powell DVs
-    archive_df[, MeadRefs_first:MeadRefs_last],         # Powell DVs
-    archive_df[, BalMaxOffset_first:BalMaxOffset_last], # Powell DVs
-    archive_df[, BalMinOffset_first:BalMinOffset_last], # Powell DVs
-    archive_df[, (n_mead_columns + n_powell_columns + 1):ncol(archive_df)] # All of the other columns
-                                                                       # (Metrics and objectives)
+    condensed_policies_full,                    # Mead DVs
+    archive_df[, PTierEl_idx],                  # Powell DVs
+    archive_df[, PRels_idx],                    # Powell DVs
+    archive_df[, MeadRefs_idx],                 # Powell DVs
+    archive_df[, BalMaxOffset_idx],             # Powell DVs
+    archive_df[, BalMinOffset_idx],             # Powell DVs
+    archive_df[, (n_dvs + 1):ncol(archive_df)]  # Objectives and Metrics
   )
   
   col_names = sapply(
@@ -417,18 +454,28 @@ condense_policies <- function(directory, archive_file_name, n_powell_tiers, n_me
 }
 
 
-create_policy_images <- function(directory, archive_df){
+create_policy_images <- function(output_dir, condensed_archive, dv_indices){
   
-  lastDV = which(colnames(archive_df) == 'T8V')
+  ## Mead DVs
+  MeadSurplus_idx <- dv_indices$MeadSurplus
+  MeadEl_idx <- dv_indices$MeadEl
+  MeadV_idx <- dv_indices$MeadV
   
-  dvs = archive_df[, 1:lastDV]
+  #lastDV = which(colnames(condensed_archive) == 'T8V')
+  
+  #dvs = condensed_archive[, 1:lastDV]
   
   # Prepare for plotting. Add full pool and deadpool columns
   
-  elevation = dvs[1:9]
-  elevation = cbind(rep(1220, nrow(elevation)), elevation)
-  names(elevation) = c("Top", names(elevation[2:10]))
-  elevation$dead.pool=895
+  #elevation = dvs[1:9]
+  #elevation = cbind(rep(1220, nrow(elevation)), elevation)
+  #names(elevation) = c("Top", names(elevation[2:10]))
+  #elevation$dead.pool=895
+  
+  elevation <- condensed_archive[, c(MeadSurplus_idx, MeadEl_idx)]
+  elevation <- cbind(rep(1220, nrow(elevation)), elevation)
+  names(elevation) <- c('Top', names(condensed_archive[, c(MeadSurplus_idx, MeadEl_idx)]))
+  elevation$dead.pool <- 895
   
   # When surplus tier doesn't exist, need to replace value to make elev_delta work
   
@@ -456,7 +503,7 @@ create_policy_images <- function(directory, archive_df){
     
   }
   
-  volume = dvs[10:17]
+  volume = condensed_archive[, MeadV_idx]
   volume[volume == 99999999] = 0
   volume$dead.pool = 0
   vol_max = apply(volume, 1, max)
@@ -493,11 +540,11 @@ create_policy_images <- function(directory, archive_df){
   names(volume_labs) = names(volume)
   
   # Add policy ID to each data frame
-  elevation$policy = as.character(1:nrow(dvs))
+  elevation$policy = as.character(1:nrow(condensed_archive))
   elev_delta$dead_pool = 895
-  elev_delta$policy = as.character(1:nrow(dvs))
-  volume$policy = as.character(1:nrow(dvs))
-  volume_labs$policy = as.character(1:nrow(dvs))
+  elev_delta$policy = as.character(1:nrow(condensed_archive))
+  volume$policy = as.character(1:nrow(condensed_archive))
+  volume_labs$policy = as.character(1:nrow(condensed_archive))
   
   piv_col = which(colnames(elev_delta)=='dead_pool')
   
@@ -600,10 +647,10 @@ create_policy_images <- function(directory, archive_df){
   
   ##################################  POWELL  ##################################
   
-  firstpDV = which(colnames(archive_df) == 'PT1e')
-  lastpDV = which(colnames(archive_df) == 'MinOffset5')
+  firstpDV = which(colnames(condensed_archive) == 'PT1e')
+  lastpDV = which(colnames(condensed_archive) == 'MinOffset5')
   
-  pdv = archive_df[, firstpDV:lastpDV]
+  pdv = condensed_archive[, firstpDV:lastpDV]
   
   #rel_ranges.df=read.table("powell_release_range_table.txt", header = T, sep = )
   
@@ -748,10 +795,10 @@ create_policy_images <- function(directory, archive_df){
   
   
   ##################### Plotting ##########################
-  output_folder <- paste0(directory, '//policy_images')
+  output_folder <- paste0(output_dir, '//policy_images')
   dir.create(output_folder)
   
-  for (i in 1:nrow(archive_df)){
+  for (i in 1:nrow(condensed_archive)){
     
     policy_id = sprintf("%04d", i)
     
@@ -828,7 +875,144 @@ create_policy_images <- function(directory, archive_df){
 
 
 
+MeadHeatmapMatrix <- function(
+    
+    condensed_archive, 
+    dv_indices,
+    max_tiers, 
+    max_elev, 
+    min_elev, 
+    disc_length
+    
+  ){
+  
+  # Mead DV indices
+  MeadSurplus_idx <- dv_indices$MeadSurplus
+  MeadEl_idx <- dv_indices$MeadEl
+  MeadV_idx <- dv_indices$MeadV
+  
+  # For process below to work: if surplus tier does not exist, need to replace 
+  # surplus elevation (99999999) with 1200
+  condensed_archive[, MeadSurplus_idx][
+    condensed_archive[, MeadSurplus_idx] == 99999999
+  ] <- 1200
+  
+  # Initialize heatmap dataframe
+  n_policies <- nrow(condensed_archive)
+  pool_elevs <- seq(max_elev, min_elev, -1* disc_length)
+  pool_elevs <- head(pool_elevs, -1)
+
+  hm_df <- data.frame(matrix(
+    nrow = length(pool_elevs),
+    ncol = n_policies
+  ))
+  row.names(hm_df) <- pool_elevs
+  
+  
+  for (i in 1:n_policies){
+    
+    policy <- condensed_archive[i, ]
+    
+    # Create elevation and volume vectors to keep track of tiers 
+    ## First two entries correspond to surplus and normal tiers
+    tier_elevs <- c(max_elev, policy[[MeadSurplus_idx]])
+    tier_vols <- c(-1, 0)
+    
+    ## Fill in remaining tiers
+    tier_elevs <- append(tier_elevs, policy[MeadEl_idx])
+    tier_vols <- append(tier_vols, policy[MeadV_idx])
+    
+    tier_elevs <- unname(unlist(tier_elevs))
+    tier_vols <- unname(unlist(tier_vols))
+    
+    # Not all policies have max # of shortage tiers. Check where the last tier
+    # occurs.
+    if (tail(tier_elevs, n=1) > min_elev){
+      idx_last_tier <- length(tier_elevs)
+    }else{
+      idx_last_tier <- match(min_elev, tier_elevs) - 1
+    }
+    
+    # Delete redundant tiers
+    tier_elevs <- c(tier_elevs[1:idx_last_tier], 895)
+    tier_vols <- tier_vols[1:idx_last_tier]
+    
+    # Create vector to store shortage volume at each discretized elevation
+    ## -1s for surplus tier and 0s for normal tier.
+    vol_at_elev <- c(
+      rep(  -1, (tier_elevs[1] - tier_elevs[2]) / disc_length  ),
+      rep(   0, (tier_elevs[2] - tier_elevs[3]) / disc_length  )
+    )
+    
+    ## Fill in the associated shortage volumes at each discretized elevation
+    ## between bottom of normal tier and deadpool
+    for (j in 3:length(tier_vols)){
+      vol_at_elev <- append(
+        vol_at_elev,
+        rep(  tier_vols[j], (tier_elevs[j] - tier_elevs[j + 1]) / disc_length  )
+      )
+    }
+    
+    hm_df[, i] <- vol_at_elev
+    
+  }
+  
+  return(as.matrix(hm_df))
+  
+}
+
+
+SortByStartingShortageElevation <- function(
+    
+  mead_heatmap_matrix, 
+  max_shortage_elev
+  
+){
+  
+  # Save original row names
+  row_names <- row.names(mead_heatmap_matrix)
+  
+  # Transpose to use dplyr's arrange function
+  hm_df_t <- data.frame(t(mead_heatmap_matrix))
+  
+  # Sort by each column (elevation) hierarchically
+  columns <- names(hm_df_t)
+  starting_col <- grep(max_shortage_elev, columns)
+  columns_to_sort <- columns[starting_col:length(columns)]
+  
+  hm_df_t <- hm_df_t %>%
+    arrange(across(all_of(columns_to_sort), list(desc)))
+  
+  # Set original row names, transpose back
+  names(hm_df_t) <- row_names
+  hm_df <- t(hm_df_t)
+  
+  return(as.matrix(hm_df))
+}
+
+
+GetMeadColorScheme <- function(){
+  shortage_volumes <- c(-1, 0, seq(50, 7000, 10))
+  
+  reclamation_color_scale <- read.csv("data/vol_gradient.csv")
+  color_string <- c("#6d46a5", "#4659a5")
+  for (i in 1:nrow(reclamation_color_scale) - 1) {
+    color_string <- append(color_string, rep(reclamation_color_scale$color[i], 5))
+  }
+  color_string <- append(color_string, tail(reclamation_color_scale$color, 1))
+  
+  # Combine the two lists to create a color scheme/ramp
+  colors <- colorRamp2(shortage_volumes, color_string)
+  
+  return(colors)
+  
+}
+
+
+
 column_mapping <- function(original_col_name){
+  
+  original_col_name <- modify_string(original_col_name)
   
   col_name = switch(
     original_col_name,
@@ -900,5 +1084,86 @@ column_mapping <- function(original_col_name){
   }
   
 }
+
+
+modify_string <- function(x) {
+  if (grepl("^Objectives.*\\.(1|2)$", x)) {
+    return(sub("\\.(1|2)$", "", x))
+  } else {
+    return(x)
+  }
+}
+
+
+get_xml_info <- function(xml_file_path){
+  
+  xml_file <- read_xml(xml_file_path)
+  
+  # Get objectives, metrics, and constraints
+  objectives <- xml_find_all(xml_file, "//objectiveList/objective/name")
+  objective_names <- xml_text(objectives)
+  
+  constraints <- xml_find_all(xml_file, "//constraintList/constraint/name")
+  constraint_names <- xml_text(constraints)
+  
+  metrics <- xml_find_all(xml_file, "//metricList/metric/name")
+  metric_names <- xml_text(metrics)
+  
+  # Return
+  list(objectives = objective_names, constraints = constraint_names, metrics = metric_names)
+  
+}
+
+get_dv_indices <- function(condensed, col_names, n_powell_tiers, n_mead_tiers){
+  
+  if (condensed){
+    
+    PTierEl_first <- which(col_names == "PT1e")
+    PRels_first <- which(col_names == "PT1Rel")
+    MeadRefs_first <- which(col_names == "MeadRef1")
+    BalMaxOffset_first <- which(col_names == "MaxOffset1")
+    BalMinOffset_first <- which(col_names == "MinOffset1")
+    MeadSurplus <- which(col_names == "surplus_elev")
+    MeadEl_first <- which(col_names == "T1e")
+    MeadV_first <- which(col_names == "T1V")
+    
+  } else{
+    
+    PTierEl_first <- which(col_names == "Powell_Tier_Elevation_DV.Row.0")
+    PRels_first <- which(col_names == "Powell_Primary_Release_Volume_DV.Row.0")
+    MeadRefs_first <- which(col_names == "Powell_Mead_Reference_Elevation_DV.Row.0")
+    BalMaxOffset_first <- which(col_names == "Powell_Balance_Max_Offset_DV.Row.0")
+    BalMinOffset_first <- which(col_names == "Powell_Balance_Min_Offset_DV.Row.0")
+    MeadSurplus <- which(col_names == "Mead_Surplus_DV")
+    MeadEl_first <- which(col_names == "Mead_Shortage_e_DV.Row.0")
+    MeadV_first <- which(col_names == "Mead_Shortage_V_DV.Row.0")
+    
+    
+  }
+  
+  PTierEl <-      c(  PTierEl_first:(PTierEl_first + n_powell_tiers - 1)  )
+  PRels <-        c(  PRels_first:(PRels_first + n_powell_tiers - 1)  )
+  MeadRefs <-     c(  MeadRefs_first:(MeadRefs_first + n_powell_tiers - 1)  )
+  BalMaxOffset <- c(  BalMaxOffset_first:(BalMaxOffset_first + n_powell_tiers - 1)  )
+  BalMinOffset <- c(  BalMinOffset_first:(BalMinOffset_first + n_powell_tiers - 1)  )
+  MeadEl <-       c(  MeadEl_first:(MeadEl_first + n_mead_tiers - 1)  )
+  MeadV <-        c(  MeadV_first:(MeadV_first + n_mead_tiers - 1)  )
+  
+  # Return
+  list(
+    PTierEl = PTierEl,
+    PRels = PRels,
+    MeadRefs = MeadRefs,
+    BalMaxOffset = BalMaxOffset,
+    BalMinOffset = BalMinOffset,
+    MeadSurplus = MeadSurplus,
+    MeadEl = MeadEl,
+    MeadV = MeadV
+  )
+  
+}
+
+
+
 
 

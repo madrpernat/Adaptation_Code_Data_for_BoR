@@ -99,7 +99,7 @@ for (i in 1:nrow(five_hundred_sow_ic)){
 
 # For each SOW, write out initial condition and demand CRSS input files
 
-output_dir <- 'output/r_output/crss_input_files/SystemConditionInput'
+output_dir <- 'output/r_output/500_sow_crss_input_files/SystemConditionInput'
 
 for (i in 1:nrow(five_hundred_sow_ic)){
   
@@ -205,7 +205,7 @@ for (i in 1:nrow(five_hundred_sow_ic)){
 # For each SOW, locate flow files and copy over
 
 src_dir <- 'data/crss_flow_files'
-output_dir <- 'output/r_output/crss_input_files/FlowInput'
+output_dir <- 'output/r_output/500_sow_crss_input_files/FlowInput'
 
 for (i in 1:nrow(five_hundred_sow_ic)){
 
