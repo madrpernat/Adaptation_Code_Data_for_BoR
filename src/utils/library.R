@@ -29,6 +29,7 @@ continuous_to_discrete <- function(unit_cube, probs, categories) {
   return(unit_cube)
 }
 
+
 quantile2radius=function(fraction, x,y,shape){
   
   # I took this code from the source code of the supersom function in Kohonen 
@@ -103,7 +104,8 @@ unit.distances=function (grid, toroidal) # taken from Kohonen source code
   }
 }
 
-
+################################################################################
+######################### BORG OUTPUT HELPER FUNCTIONS #########################
 ################################################################################
 
 # This function parses the archive file assuming that columns are in the 
@@ -134,7 +136,6 @@ condense_policies <- function(
   # Read in archive file
   archive_file_path = paste0(borg_directory, archive_file_name)
   archive_df <- read.table(archive_file_path, header=TRUE)
-  
 
   
   # Get column indices for decision variables
@@ -211,16 +212,18 @@ condense_policies <- function(
     # (columns 2-5) to that of the row with the highest Primary Release volume.
     for (i in 1:(nrow(PTiering) - 1)){
     
-      if (PTiering[i,1] == PTiering[i+1,1]){
-        PTiering[i+1,2] = PTiering[i,2]
-        PTiering[i+1,3] = PTiering[i,3]
-        PTiering[i+1,4] = PTiering[i,4]
-        PTiering[i+1,5] = PTiering[i,5]
+      if (PTiering[i, "PTierEl"] == PTiering[i + 1, "PTierEl"]){
+        
+        PTiering[i + 1, "MeadRefEl"]    = PTiering[i, "MeadRefEl"]
+        PTiering[i + 1, "BalMaxOffset"] = PTiering[i, "BalMaxOffset"]
+        PTiering[i + 1, "BalMinOffset"] = PTiering[i, "BalMinOffset"]
+        PTiering[i + 1, "PRels"]        = PTiering[i, "PRels"]
+        
       } else { 
-        PTiering[i+1,2] = PTiering[i+1,2]
-        PTiering[i+1,3] = PTiering[i+1,3]
-        PTiering[i+1,4] = PTiering[i+1,4]
-        PTiering[i+1,5] = PTiering[i+1,5]
+        PTiering[i + 1, "MeadRefEl"]    = PTiering[i + 1, "MeadRefEl"]
+        PTiering[i + 1, "BalMaxOffset"] = PTiering[i + 1, "BalMaxOffset"]
+        PTiering[i + 1, "BalMinOffset"] = PTiering[i + 1, "BalMinOffset"]
+        PTiering[i + 1, "PRels"]        = PTiering[i + 1, "PRels"]
       }
       
     }
@@ -228,10 +231,13 @@ condense_policies <- function(
     # Create bottom tier (if bottom row elev = 3370, lowest tier > 3370 becomes 
     # bottom tier; mead ref, primary rel w/ 99999; just keep elev and release 
     # range)
-    if (PTiering[nrow(PTiering), 1] == 3370 && PTiering[1, 1] != 3370){
+    if (
+      PTiering[5, "PTierEl"] == 3370 && 
+      PTiering[1, "PTierEl"] != 3370
+    ){
       
       next_min = which(
-        PTiering[, 1] == min(PTiering$PTierEl[PTiering$PTierEl > 3370])
+        PTiering[, "PTierEl"] == min(PTiering$PTierEl[PTiering$PTierEl > 3370])
       )
       
       PTiering[next_min,"MeadRefEl"] = PTiering[next_min,"PRels"] = 99999999
@@ -241,9 +247,9 @@ condense_policies <- function(
     # Make MeadRefEl = 99999999 if Min and Max offset are 0
     for (i in 1:(nrow(PTiering))){
       
-      if (PTiering[i, 3] == 0 && PTiering[i, 4] == 0){
+      if (PTiering[i, "BalMaxOffset"] == 0 && PTiering[i, "BalMinOffset"] == 0){
         
-        PTiering[i, 2] = 99999999
+        PTiering[i, "MeadRefEl"] = 99999999
         
       }
     }
@@ -271,21 +277,24 @@ condense_policies <- function(
     # a pool elevation of 3370, replace their other values with 99999999 as well
     for (i in 1:(nrow(PTiering))){
       
-      if (any(PTiering[i, 1] == PTiering[-i, 1]) | PTiering[i,1] == 3370){
+      if (
+        any(PTiering[i, "PTierEl"] == PTiering[-i, "PTierEl"]) | 
+        PTiering[i,"PTierEl"] == 3370)
+      {
         
-        PTiering[i,1] = 3370
-        PTiering[i,2] = 99999999
-        PTiering[i,3] = 99999999
-        PTiering[i,4] = 99999999
-        PTiering[i,5] = 99999999
+        PTiering[i, "PTierEl"]      = 3370
+        PTiering[i, "MeadRefEl"]    = 99999999
+        PTiering[i, "BalMaxOffset"] = 99999999
+        PTiering[i, "BalMinOffset"] = 99999999
+        PTiering[i, "PRels"]        = 99999999
         
       } else { 
         
-        PTiering[i,1] = PTiering[i,1]
-        PTiering[i,2] = PTiering[i,2]
-        PTiering[i,3] = PTiering[i,3]
-        PTiering[i,4] = PTiering[i,4]
-        PTiering[i,5] = PTiering[i,5]
+        PTiering[i,"PTierEl"]      = PTiering[i,"PTierEl"]
+        PTiering[i,"MeadRefEl"]    = PTiering[i,"MeadRefEl"]
+        PTiering[i,"BalMaxOffset"] = PTiering[i,"BalMaxOffset"]
+        PTiering[i,"BalMinOffset"] = PTiering[i,"BalMinOffset"]
+        PTiering[i,"PRels"]        = PTiering[i,"PRels"]
         
       }
       
@@ -294,16 +303,16 @@ condense_policies <- function(
     # Sort rows based on pool elevation (col 1)
     PTiering = PTiering[order(PTiering$PTierEl, decreasing = TRUE), ] 
     
-    # 
     
-    # Distribute columns of PTiering back into a single row and combine w/ 
-    # un-condensed mead variables & objective values
+    # Distribute columns of PTiering back into a single row and replace within
+    # archive_df
     archive_df[j, PTierEl_idx] = t(PTiering$PTierEl)
     archive_df[j, MeadRefs_idx] = t(PTiering$MeadRefEl)
     archive_df[j, BalMaxOffset_idx] = t(PTiering$BalMaxOffset)
     archive_df[j, BalMinOffset_idx] = t(PTiering$BalMinOffset)
     archive_df[j, PRels_idx] = t(PTiering$PRels)
   }
+  
   
   # MEAD
   
@@ -323,32 +332,34 @@ condense_policies <- function(
   compressed_vol = short_vol
   compressed_elev = short_elev
   
-  # If repeating elevations, replace volume w/ highest. Replacing the elevations 
-  # needs to come first b/c of how RW handles the variables
-  for(i in 1:ncol(compressed_vol)){
+  # For rows that have the same elevation values, replace the corresponding 
+  # volume values w/ the highest volume value of those rows. Replacing volumes 
+  # based on repeating elevations needs to come first b/c of how RW handles the 
+  # variables.
+  for(i in 1:ncol(compressed_elev)){
     
-    for(j in 1:nrow(compressed_vol)){
+    for(j in 1:nrow(compressed_elev)){
       
-      if (any(compressed_elev[j,i] == compressed_elev[-j,i])){
+      if (any(compressed_elev[j, i] == compressed_elev[-j, i])){
         
-        compressed_vol[j,i] = max(
-          compressed_vol[which(compressed_elev[,i] == compressed_elev[j,i]), i]
+        compressed_vol[j, i] = max(
+          compressed_vol[which(compressed_elev[, i] == compressed_elev[j, i]), i]
         )
         
       }
     }
   }
   
-  # If repeating volumes, replace elevation w/ highest
-  
+  # For rows that have the same volume value, replace the corresponding 
+  # elevation values w/
   for(i in 1:ncol(compressed_vol)){
     
     for(j in 1:nrow(compressed_vol)){
       
-      if (any(compressed_vol[j,i] == compressed_vol[-j,i])){
+      if (any(compressed_vol[j, i] == compressed_vol[-j, i])){
         
-        compressed_elev[j,i] = max(
-          compressed_elev[which(compressed_vol[,i] == compressed_vol[j,i]), i]
+        compressed_elev[j, i] = max(
+          compressed_elev[which(compressed_vol[, i] == compressed_vol[j, i]), i]
         )
         
       }
@@ -363,10 +374,11 @@ condense_policies <- function(
     
     for(j in 2:nrow(compressed_vol)){
       
-      if (any(compressed_vol[j,i] == compressed_vol[1:(j-1),i])){
+      if (any(compressed_vol[j, i] == compressed_vol[1:(j - 1), i])){
         
-        compressed_elev[j,i] = 895
-        compressed_vol[j,i] = 99999999
+        compressed_elev[j, i] = 895
+        compressed_vol[j, i] = 99999999
+        
       }
     }
   }
@@ -378,10 +390,10 @@ condense_policies <- function(
     
     for(j in 1:nrow(compressed_vol)){
       
-      if (compressed_vol[j,i] == 0){
+      if (compressed_vol[j, i] == 0){
         
-        compressed_elev[j,i] = 895
-        compressed_vol[j,i] = 99999999
+        compressed_elev[j, i] = 895
+        compressed_vol[j, i] = 99999999
       }
     }
   }
@@ -393,9 +405,9 @@ condense_policies <- function(
     
     for(j in 1:nrow(compressed_vol)){
       
-      if (compressed_elev[j,i] == 895){
+      if (compressed_elev[j, i] == 895){
         
-        compressed_vol[j,i] = 99999999
+        compressed_vol[j, i] = 99999999
       }
     }
   }
@@ -403,12 +415,12 @@ condense_policies <- function(
   # Save row names, since they get wiped after 'apply' below
   row_names <- c(row.names(compressed_elev), rev(row.names(compressed_vol)))
   
-  # Sort based on elevation only
+  # Sort rows/tiers
   compressed_elev = apply(compressed_elev, 2, as.numeric)
   condensed_elev = apply(compressed_elev, 2, sort, decreasing=T)
   condensed_vol = apply(compressed_vol, 2, sort, decreasing=F)
   
-  # Re-combine
+  # Re-combine elevation and volume data
   condensed_policies = as.data.frame(rbind(condensed_elev, condensed_vol))
   
   row.names(condensed_policies) = row_names
@@ -456,92 +468,76 @@ condense_policies <- function(
 
 create_policy_images <- function(output_dir, condensed_archive, dv_indices){
   
-  ## Mead DVs
+  # Mead DVs
   MeadSurplus_idx <- dv_indices$MeadSurplus
   MeadEl_idx <- dv_indices$MeadEl
   MeadV_idx <- dv_indices$MeadV
   
-  #lastDV = which(colnames(condensed_archive) == 'T8V')
-  
-  #dvs = condensed_archive[, 1:lastDV]
-  
-  # Prepare for plotting. Add full pool and deadpool columns
-  
-  #elevation = dvs[1:9]
-  #elevation = cbind(rep(1220, nrow(elevation)), elevation)
-  #names(elevation) = c("Top", names(elevation[2:10]))
-  #elevation$dead.pool=895
-  
+  # Prepare elevations for plotting. Add full pool and deadpool columns
   elevation <- condensed_archive[, c(MeadSurplus_idx, MeadEl_idx)]
   elevation <- cbind(rep(1220, nrow(elevation)), elevation)
-  names(elevation) <- c('Top', names(condensed_archive[, c(MeadSurplus_idx, MeadEl_idx)]))
+  
+  names(elevation) <- c(
+    'Top', 
+    names(condensed_archive[, c(MeadSurplus_idx, MeadEl_idx)])
+  )
   elevation$dead.pool <- 895
   
-  # When surplus tier doesn't exist, need to replace value to make elev_delta work
-  
+  # When surplus tier doesn't exist, need to replace the value to max elevation
+  # to make elev_delta work
   for(j in 1:nrow(elevation)){
     
-    if (elevation[j, 2] == 99999999){
+    if (elevation[j, "surplus_elev"] == 99999999){
       
-      elevation[j, 2] = 1220
+      elevation[j, "surplus_elev"] = 1220
     }
   }
   
   # Save max elevation for ggplotting later
-  
   elev_max = unlist(apply(elevation[2:10], 1, max))
   
   # Initialize elev_delta
-  
   elev_delta = elevation[, 1:10]
   
   # Difference between subsequent tier elevations, used for plotting
-  
   for(i in 2:11){
-    
     elev_delta[i - 1] = elevation[i - 1] - elevation[i]
-    
   }
   
+  elev_delta$dead_pool = 895
+  
+  # Prepare volumes for plotting
   volume = condensed_archive[, MeadV_idx]
   volume[volume == 99999999] = 0
   volume$dead.pool = 0
   vol_max = apply(volume, 1, max)
   
-  # Identify actual tiers. Sum number of tiers. Want this for filtering in web app
-  
+  # Identify number of actual tiers
   tier_bin = volume > 0
-  
   nTiers = apply(tier_bin, 1, sum)
   
   # Create shortage volume labels, ex) V = 500 KAF
-  
   volume_labs = matrix(NA, nrow = nrow(volume), ncol = ncol(volume))
   
   for (i in 1:ncol(volume_labs)){
-    
-    volume_labs[, i] = paste(volume[, i], ' KAF', sep='')
-    
+    volume_labs[, i] = paste0(volume[, i], ' KAF')
   }
   
   volume_labs[volume_labs == "0 KAF"] = NA
   volume_labs = data.frame(volume_labs)
   
   # Add 2 columns to volume df so it becomes the same number of columns as 
-  # elev_delta (which has top and surplus tiers now)
-  
+  # elev_delta (which has top and surplus tiers)
   volume = cbind(rep(NA, nrow(volume)), rep(NA, nrow(volume)), volume)
   names(volume) = c("Top","Surplus", names(volume[3:11]))
   
   volume_labs = cbind(rep("Surplus", nrow(volume_labs)), 
                       rep("Normal", nrow(volume_labs)),
                       volume_labs)
-  
   names(volume_labs) = names(volume)
   
   # Add policy ID to each data frame
   elevation$policy = as.character(1:nrow(condensed_archive))
-  elev_delta$dead_pool = 895
   elev_delta$policy = as.character(1:nrow(condensed_archive))
   volume$policy = as.character(1:nrow(condensed_archive))
   volume_labs$policy = as.character(1:nrow(condensed_archive))
@@ -553,32 +549,32 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
   elev_delta = pivot_longer(elev_delta, cols=1:piv_col, names_to = 'Tier') 
   
   # Need to reorder the factor levels such that dead pool is last
-  
-  elev_delta$Tier = factor(elev_delta$Tier, levels = c("Top",
-                                                       "surplus_elev",
-                                                       "T1e",
-                                                       "T2e",
-                                                       "T3e",
-                                                       "T4e",
-                                                       "T5e",
-                                                       "T6e",
-                                                       "T7e",
-                                                       "T8e",
-                                                       "dead_pool"))
-  
-  elev_delta = dplyr::rename(elev_delta, 'delta'='value')
+  elev_delta$Tier = factor(
+    elev_delta$Tier, 
+    levels = c(
+      "Top",
+      "surplus_elev",
+      "T1e",
+      "T2e",
+      "T3e",
+      "T4e",
+      "T5e",
+      "T6e",
+      "T7e",
+      "T8e",
+      "dead_pool"
+    )
+  )
+  elev_delta = rename(elev_delta, 'delta'= 'value')
   
   # Stacked bar plot order depends on the level order
-  
   volume = pivot_longer(volume, cols=1:piv_col, names_to = 'Tier')
   volume$value = as.numeric(volume$value)
   volume_labs = pivot_longer(volume_labs, cols=1:piv_col, names_to = 'Tier')
   volume_labs = data.frame(volume_labs, elevation = elevation$value)
   
-  # Remove label for surplus when it doesn't really exist (can start at row 2 b/c 
-  # row 1 is Top)
-  
-  for (i in 2:nrow(volume_labs)){
+  # Remove label for surplus when it doesn't really exist
+  for (i in 1:nrow(volume_labs)){
     
     if(volume_labs[i, 2] == "Surplus" && volume_labs[i, 4] == 1220){
       
@@ -588,7 +584,6 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
   
   
   # Add color to volume df
-  
   volume_col = as.data.frame(read.csv('data/vol_gradient.csv'))
   volume_col$color = as.character(volume_col$color)
   
@@ -612,93 +607,87 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
   for(i in 1:nrow(volume)){
     
     if (volume[i, 2] == "Top"){
-      
       volume[i, 4] = "#6d46a5"
     }
     
     if (volume[i, 2] == "Surplus"){
-      
       volume[i, 4] = "#4659a5"
     }
     
     if (volume[i, 2] == "PartSurplus"){
-      
       volume[i, 4] = "#bdbfce"
     }
     
   }
   
-  df = data.frame(elev_delta,
-                  v_lab = volume_labs$value,
-                  v_col = volume$color,
-                  elevation = volume_labs$elevation,
-                  volume = volume$value)
+  df = data.frame(
+    elev_delta,
+    v_lab = volume_labs$value,
+    v_col = volume$color,
+    elevation = volume_labs$elevation,
+    volume = volume$value
+  )
   
-  df$Tier = rep(c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), 
-                length(unique(df$policy)))
+  df$Tier = rep(
+    c('a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k'), 
+    length(unique(df$policy))
+  )
+  df$TierName = rep(
+    c('Surplus', 'Normal', '1', '2', '3', '4', '5', '6', '7', '8', 'Dead Pool'), 
+    length(unique(df$policy))
+  )
   
-  df$TierName = rep(c('Surplus', 'Normal', '1', '2', '3', '4', '5', '6', '7', '8', 'Dead Pool'), 
-                    length(unique(df$policy)))
-  
-  # Change to number and add zeros for image ordering in tableau
-  
+  # Change to number and add zeros for image ordering
   df$policy = as.numeric(df$policy)
   df$policy = sprintf("%04d", df$policy)
   
   ##################################  POWELL  ##################################
-  
-  firstpDV = which(colnames(condensed_archive) == 'PT1e')
-  lastpDV = which(colnames(condensed_archive) == 'MinOffset5')
-  
-  pdv = condensed_archive[, firstpDV:lastpDV]
-  
-  #rel_ranges.df=read.table("powell_release_range_table.txt", header = T, sep = )
-  
-  #################### Create data frame for stacked bar plots ###################
+  #################### Create data frame for stacked bar plots #################
   
   # Translate dummy variables into NA
-  
-  pdv[pdv == 99999999] = NA
+  condensed_archive[condensed_archive == 99999999] = NA
   
   # Prepare for plotting. Add equalization and deadpool columns.
+  p.elevation = condensed_archive[, dv_indices$PTierEl]
   
-  p.elevation = pdv[1:5]
-  p.elevation = cbind(rep(3700, nrow(p.elevation)), p.elevation)
-  names(p.elevation) = c("Equalization", names(p.elevation[2:ncol(p.elevation)]))
+  # EQ
+  p.elevation = cbind(
+    rep(3700, nrow(p.elevation)), 
+    p.elevation
+  )
+  names(p.elevation) = c(
+    "Equalization", 
+    names(p.elevation[2:ncol(p.elevation)])
+  )
+  ## Deadpool
   p.elevation$dead.pool = 3370
   
   # Initialize elev_delta
-  
   p.elev_delta = p.elevation[, 1:6]
   
   # Difference between tier elevations, used for plotting
-  
   for(i in 2:ncol(p.elevation)){
-    
     p.elev_delta[i - 1] = p.elevation[i - 1] - p.elevation[i]
   }
   
   # Mead reference elevations
-  mead_ref = pdv[, 11:15]
+  mead_ref = condensed_archive[, dv_indices$MeadRefs]
   mead_ref = cbind(rep(NA, nrow(mead_ref)), mead_ref)
   names(mead_ref) = c("Equalization", names(mead_ref[2:ncol(mead_ref)]))
   
   # Start with min offset
-  
-  minoffsets = pdv[21:25] / 1000000
+  minoffsets = condensed_archive[, dv_indices$BalMinOffset] / 1000000
   minoffsets = cbind(rep(NA, nrow(minoffsets)), minoffsets)
   names(minoffsets) = c("Equalization", names(minoffsets[2:ncol(minoffsets)]))
   
   # Max offsets
-  
-  maxoffsets = pdv[16:20] / 1000000
+  maxoffsets = condensed_archive[, dv_indices$BalMaxOffset] / 1000000
   maxoffsets = cbind(rep(NA, nrow(maxoffsets)), maxoffsets)
   names(maxoffsets) = c("Equalization", names(maxoffsets[2:ncol(maxoffsets)]))
   
   # Primary releases
-  
-  releases = pdv[, 6:10]
-  releases = releases/1000000 #change to MAF
+  releases = condensed_archive[, dv_indices$PRels]
+  releases = releases / 1000000  # change to MAF
   releases=cbind(rep(NA, nrow(releases)), releases)
   names(releases) = c("Equalization", names(releases[2:ncol(releases)]))
   
@@ -724,75 +713,119 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
         
         if (minoffsets[i, j] == 0){
           
-          tier_labs[i, j] = paste("Release", releases[i, j], "maf;", 
-                                  "Balance", releases[i, j] + maxoffsets[i, j], 
-                                  "maf if Mead <", mead_ref[i, j], "ft",  sep = " ")
+          tier_labs[i, j] = paste(
+            "Release", releases[i, j], "maf;", 
+            "Balance", releases[i, j] + maxoffsets[i, j], 
+            "maf if Mead <", mead_ref[i, j], "ft",  sep = " "
+          )
           
         } else{
           
-          tier_labs[i, j] = paste("Release", releases[i, j], "maf;", 
-                                  "Balance", releases[i, j] + maxoffsets[i, j] - minoffsets[i, j], "-", 
-                                  releases[i, j] + maxoffsets[i, j], 
-                                  "maf if Mead <", mead_ref[i, j], "ft",  sep = " ")
+          tier_labs[i, j] = paste(
+            "Release", releases[i, j], "maf;", 
+            "Balance", releases[i, j] + maxoffsets[i, j] - minoffsets[i, j], "-", 
+            releases[i, j] + maxoffsets[i, j], 
+            "maf if Mead <", mead_ref[i, j], "ft",  sep = " "
+          )
+          
         }
+        
       }
       
-      else if(is.na(releases[i, j])==F) {
-        
+      else if(is.na(releases[i, j]) == F) {
         tier_labs[i, j] = paste("Release", releases[i,j], "maf;")
-        
       }
       
       else{
-        
-        tier_labs[i, j]=NA
+        tier_labs[i, j] = NA
       }
     }
   }
   
-  names(tier_labs) = c("Equalization Label", "Tier1 Label", "Tier2 Label", 
-                       "Tier3 Label", "Tier4 Label", "Tier5 Label" )
-  
+  names(tier_labs) = c(
+    "Equalization Label", 
+    "Tier1 Label", 
+    "Tier2 Label", 
+    "Tier3 Label", 
+    "Tier4 Label", 
+    "Tier5 Label" 
+  )
   
   # Add dead pool and policy number to every df
-  p.elevation$policy = as.character(1:nrow(pdv))
+  p.elevation$policy = as.character(1:nrow(condensed_archive))
   
   p.elev_delta$dead.pool = 3370
-  p.elev_delta$policy = as.character(1:nrow(pdv))
+  p.elev_delta$policy = as.character(1:nrow(condensed_archive))
   
   tier_labs$dead.pool = NA
-  tier_labs$policy = as.character(1:nrow(pdv))
+  tier_labs$policy = as.character(1:nrow(condensed_archive))
   
   mead_ref$dead.pool = 3370
-  mead_ref$policy = as.character(1:nrow(pdv))
+  mead_ref$policy = as.character(1:nrow(condensed_archive))
   
   minoffsets$dead.pool = 3370
-  minoffsets$policy = as.character(1:nrow(pdv))
+  minoffsets$policy = as.character(1:nrow(condensed_archive))
   
   maxoffsets$dead.pool = 3370
-  maxoffsets$policy = as.character(1:nrow(pdv))
+  maxoffsets$policy = as.character(1:nrow(condensed_archive))
   
   releases$dead.pool = 3370
-  releases$policy = as.character(1:nrow(pdv))
+  releases$policy = as.character(1:nrow(condensed_archive))
   
   # Pivot longer
+  p.elevation = pivot_longer(
+    p.elevation, 
+    cols = 1:ncol(p.elevation) - 1, 
+    names_to = 'Tier'
+  )
+  p.elev_delta = pivot_longer(
+    p.elev_delta, 
+    cols = 1:ncol(p.elev_delta) - 1, 
+    names_to = 'Tier'
+  )
+  tier_labs = pivot_longer(
+    tier_labs, 
+    cols = 1:ncol(tier_labs) - 1, 
+    names_to = 'Tier'
+  )
+  mead_ref = pivot_longer(
+    mead_ref, 
+    cols = 1:ncol(mead_ref) - 1, 
+    names_to = 'Tier'
+  )
+  minoffsets = pivot_longer(
+    minoffsets, 
+    cols = 1:ncol(minoffsets) - 1, 
+    names_to = 'Tier'
+  )
+  maxoffsets = pivot_longer(
+    maxoffsets, 
+    cols = 1:ncol(maxoffsets) - 1, 
+    names_to = 'Tier'
+  )
+  releases=pivot_longer(
+    releases, 
+    cols = 1:ncol(releases) - 1, 
+    names_to = 'Tier'
+  )
   
-  p.elevation = pivot_longer(p.elevation, cols = 1:ncol(p.elevation) - 1, names_to = 'Tier')
-  p.elev_delta = pivot_longer(p.elev_delta, cols = 1:ncol(p.elev_delta) - 1, names_to = 'Tier')
-  tier_labs = pivot_longer(tier_labs, cols = 1:ncol(tier_labs) - 1, names_to = 'Tier')
-  mead_ref = pivot_longer(mead_ref, cols = 1:ncol(mead_ref) - 1, names_to = 'Tier')
-  minoffsets = pivot_longer(minoffsets, cols = 1:ncol(minoffsets) - 1, names_to = 'Tier')
-  maxoffsets = pivot_longer(maxoffsets, cols = 1:ncol(maxoffsets) - 1, names_to = 'Tier')
-  releases=pivot_longer(releases, cols = 1:ncol(releases) - 1, names_to = 'Tier')
-  
-  p.df = data.frame(p.elevation, delta = p.elev_delta$value, t_lab = tier_labs$value)
-  p.df$Tier = rep(c('a', 'b', 'c', 'd', 'e', 'f', 'g'), length(unique(df$policy)))
-  p.df$TierName = rep(c('Equalization', 'Tier1', 'Tier2', 'Tier3', 'Tier4', 'Tier5', 'Dead Pool'), length(unique(p.df$policy)))
+  p.df = data.frame(
+    p.elevation, 
+    delta = p.elev_delta$value, 
+    t_lab = tier_labs$value
+  )
+  p.df$Tier = rep(
+    c('a', 'b', 'c', 'd', 'e', 'f', 'g'), 
+    length(unique(df$policy))
+  )
+  p.df$TierName = rep(
+    c('Equalization', 'Tier1', 'Tier2', 'Tier3', 'Tier4', 'Tier5', 'Dead Pool'), 
+    length(unique(p.df$policy))
+  )
   
   # Change to number and add zeros for image ordering in tableau
   p.df$policy = as.numeric(p.df$policy)
   p.df$policy = sprintf("%04d", p.df$policy)
-  
   
   ##################### Plotting ##########################
   output_folder <- paste0(output_dir, '//policy_images')
@@ -802,13 +835,18 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
     
     policy_id = sprintf("%04d", i)
     
-    powell_pol = ggplot(subset(p.df, policy %in% c(policy_id)), 
-                        aes(fill = Tier, y = delta, x = policy, label = t_lab)) +  
+    # Powell plot
+    powell_pol = ggplot(
+      subset(p.df, policy %in% c(policy_id)), 
+      aes(fill = Tier, y = delta, x = policy, label = t_lab)
+    ) + 
       
-      geom_bar(position = "stack", 
-               stat = "identity", 
-               color = "black", 
-               show.legend = FALSE) +
+      geom_bar(
+        position = "stack", 
+        stat = "identity", 
+        color = "black", 
+        show.legend = FALSE
+      ) +
       
       scale_fill_manual(values=c(
         "#1BBC9B", 
@@ -817,56 +855,94 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
         "#45BF55",
         "#79BD8F",
         "#289976",
-        "#26A69A")) +
+        "#26A69A")
+      ) +
       
-      geom_text(position = position_stack(vjust = .5), size = 2.5) +
+      geom_text(
+        position = position_stack(vjust = .5), 
+        size = 2.5
+      ) +
       
       theme_minimal() +
       
-      ggtitle("Lake Powell") +
+      ggtitle(
+        label = "Lake Powell"
+      ) +
       
-      theme(plot.title = element_text(hjust = .5)) +
+      theme(
+        plot.title = element_text(hjust = .5)
+      ) +
       
-      ylab("PE") +
+      ylab(
+        label = "PE"
+      ) +
       
-      scale_y_continuous(breaks = seq(3385, 3700, by = 20)) +
+      scale_y_continuous(
+        breaks = seq(3385, 3700, by = 20)
+      ) +
       
-      coord_cartesian(ylim = c(3385.5, 3700))
+      coord_cartesian(
+        ylim = c(3385.5, 3700)
+      )
     
     
+    # Mead plot
     mead_col = as.character(df$v_col[which(df$policy == policy_id)])
     
-    mead_pol = ggplot(data=subset(df, policy %in% c(policy_id)), 
-                      aes(fill=Tier, y=delta, x=policy, label=v_lab)) +
+    mead_pol = ggplot(
+      subset(df, policy %in% c(policy_id)), 
+      aes(fill=Tier, y=delta, x=policy, label=v_lab)
+    ) +
       
-      geom_bar(position="stack", stat="identity",  color="black",  show.legend = FALSE) +
+      geom_bar(
+        position="stack", 
+        stat="identity",  
+        color="black",  
+        show.legend = FALSE
+      ) +
       
-      scale_fill_manual(values = mead_col) +
+      scale_fill_manual(
+        values = mead_col
+      ) +
       
-      geom_text(position = position_stack(vjust = .5), size = 2.5) +
+      geom_text(
+        position = position_stack(vjust = .5), 
+        size = 2.5
+      ) +
       
       theme_minimal() +
       
-      ggtitle("Lake Mead") +
+      ggtitle(
+        label = "Lake Mead"
+      ) +
       
-      theme(plot.title = element_text(hjust = .5)) +
+      theme(
+        plot.title = element_text(hjust = .5)
+      ) +
       
-      ylab('PE') +
+      ylab(
+        label = "PE"
+      ) +
       
-      scale_y_continuous(breaks = seq(910, 1220, by = 20)) +
+      scale_y_continuous(
+        breaks = seq(910, 1220, by = 20)
+      ) +
       
-      coord_cartesian(ylim=c(910, 1220))
+      coord_cartesian(
+        ylim=c(910, 1220)
+      )
     
     
-    powell_pol + mead_pol
-    
+    # Combine Powell + Mead plots
     both.fig = powell_pol + mead_pol
     
-    ggsave(paste0(output_folder, '//', policy_id, ".png"), 
-           plot = both.fig, 
-           device = "png",
-           width = 1650, height = 1420, units = "px",
-           dpi = 200)
+    ggsave(
+      paste0(output_folder, '//', policy_id, ".png"), 
+      plot = both.fig, 
+      device = "png",
+      width = 1650, height = 1420, units = "px",
+      dpi = 200
+    )
     
   }
   
@@ -892,10 +968,10 @@ MeadHeatmapMatrix <- function(
   MeadV_idx <- dv_indices$MeadV
   
   # For process below to work: if surplus tier does not exist, need to replace 
-  # surplus elevation (99999999) with 1200
+  # surplus elevation (99999999) with max elev
   condensed_archive[, MeadSurplus_idx][
     condensed_archive[, MeadSurplus_idx] == 99999999
-  ] <- 1200
+  ] <- max_elev
   
   # Initialize heatmap dataframe
   n_policies <- nrow(condensed_archive)
@@ -1141,13 +1217,13 @@ get_dv_indices <- function(condensed, col_names, n_powell_tiers, n_mead_tiers){
     
   }
   
-  PTierEl <-      c(  PTierEl_first:(PTierEl_first + n_powell_tiers - 1)  )
-  PRels <-        c(  PRels_first:(PRels_first + n_powell_tiers - 1)  )
-  MeadRefs <-     c(  MeadRefs_first:(MeadRefs_first + n_powell_tiers - 1)  )
+  PTierEl      <- c(       PTierEl_first:(PTierEl_first + n_powell_tiers - 1)       )
+  PRels        <- c(        PRels_first:(PRels_first + n_powell_tiers - 1)          )
+  MeadRefs     <- c(      MeadRefs_first:(MeadRefs_first + n_powell_tiers - 1)      )
   BalMaxOffset <- c(  BalMaxOffset_first:(BalMaxOffset_first + n_powell_tiers - 1)  )
   BalMinOffset <- c(  BalMinOffset_first:(BalMinOffset_first + n_powell_tiers - 1)  )
-  MeadEl <-       c(  MeadEl_first:(MeadEl_first + n_mead_tiers - 1)  )
-  MeadV <-        c(  MeadV_first:(MeadV_first + n_mead_tiers - 1)  )
+  MeadEl       <- c(          MeadEl_first:(MeadEl_first + n_mead_tiers - 1)        )
+  MeadV        <- c(           MeadV_first:(MeadV_first + n_mead_tiers - 1)         )
   
   # Return
   list(

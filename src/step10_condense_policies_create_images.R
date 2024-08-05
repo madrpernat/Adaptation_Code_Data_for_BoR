@@ -9,16 +9,19 @@ options(scipen = 999)
 source('src/utils/library.R')
 
 src_dir <- 'borg_directories/'
+archive_file_name <- '/borg_run/Archive.txt'
+n_powell_tiers <- 5
+n_mead_tiers <- 8
+max_mead_elev = 1220
+max_mead_shortage_elev = 1145
+min_mead_elev = 895
+
+
 borg_experiments <- list.dirs(
   path = src_dir, 
   full.names = FALSE, 
   recursive = FALSE
 )
-
-archive_file_name <- '/borg_run/Archive.txt'
-
-n_powell_tiers <- 5
-n_mead_tiers <- 8
 
 for (experiment in borg_experiments){
   
@@ -60,7 +63,7 @@ for (experiment in borg_experiments){
   # Create policy images. 
   create_policy_images(
     output_dir = output_dir,
-    archive_df = condensed_archive,
+    condensed_archive = condensed_archive,
     dv_indices
   )
   
@@ -69,15 +72,15 @@ for (experiment in borg_experiments){
     condensed_archive = condensed_archive,
     dv_indices = dv_indices,
     max_tiers = n_mead_tiers,
-    max_elev = 1200,
-    min_elev = 895,
+    max_elev = max_mead_elev,
+    min_elev = min_mead_elev,
     disc_length = 5
   )
   
   # Optional, order policies (columns) by starting shortage elevation
   mead_heatmap_matrix <- SortByStartingShortageElevation(
     mead_heatmap_matrix = mead_heatmap_matrix,
-    max_shortage_elev = 1145
+    max_shortage_elev = max_mead_shortage_elev
   )
   
   # Draw the heatmap
@@ -104,6 +107,7 @@ for (experiment in borg_experiments){
   png(paste0(output_dir, '/mead_policy_heatmap.png'), width=800, height=600)
   draw(heatmap, heatmap_legend_side = "right")
   dev.off()
+  
 }
 
 
