@@ -32,6 +32,12 @@ for (experiment in borg_experiments){
   # Path of the actual borg experiment directory
   borg_directory <- paste0(src_dir, experiment)
   
+  # Copy over 'experiment_id' file to output directory
+  file.copy(
+    from = paste0(borg_directory, '/experiment_id.txt'),
+    to = output_dir
+  )
+  
   # Get experiment's xml file
   files <- list.files(borg_directory)
   xml_file_name <- files[grep("\\.xml$", files)]
@@ -109,7 +115,5 @@ for (experiment in borg_experiments){
   dev.off()
   
 }
-
-
 
 

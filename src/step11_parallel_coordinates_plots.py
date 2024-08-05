@@ -24,7 +24,6 @@ def main():
             columns=['Experiment', 'Policy'] + objectives
         )
 
-        # Iterate through each experiment directory specified in the config
         for exp_directory in config['exp_directories']:
 
             # Read the experiment's ID file. This ID will be used to label each policy's objective data to keep track
