@@ -1,14 +1,15 @@
-source('src/utils/library.R')
+source('src/utils/clear.R')
+source('src/utils/som_library.R')
 
 # Read in scaled cumulative timeseries data
 cumulative_timeseries_scaled <- as.matrix(
   fread(
-    file='output/python_output/full_factorial_cumulative_timeseries_scaled.csv',
+    file='output/full_factorial_cumulative_timeseries_scaled.csv',
     header=FALSE)
 )
 
 # Read in hyperparameter df
-params_metrics_df <- read.csv('output/r_output/som_params_metrics.csv')
+params_metrics_df <- read.csv('output/som_params_metrics.csv')
 
 # Best parameters
 idx = 442  # best som hyperparmeters chosen in step 2
@@ -57,7 +58,7 @@ best_som <- som(
 )
 
 # Save best_som object
-saveRDS(object=best_som, file='output/r_output/best_som.rds')
+saveRDS(object=best_som, file='output/best_som.rds')
 
 
 # WRITE OUT BEST_SOM FIT INFORMATION FOR USE IN PYTHON
@@ -67,7 +68,7 @@ som_codes <- best_som$codes[[1]]
 colnames(som_codes) <- seq(2027, 2056)
 write.csv(
   x=som_codes,
-  file='output/r_output/som_codes_scaled.csv',
+  file='output/som_codes_scaled.csv',
   row.names=FALSE
 )
 
@@ -82,7 +83,7 @@ colnames(neuron_ids) <- c('SOW', 'Neuron')
 
 write.csv(
   x=neuron_ids,
-  file='output/r_output/som_sow_neuron_ids.csv',
+  file='output/som_sow_neuron_ids.csv',
   row.names=FALSE
 )
 
@@ -91,20 +92,20 @@ neuron_coordinates <- data.frame(best_som$grid$pts)
 
 write.csv(
   x=neuron_coordinates,
-  file='output/r_output/som_neuron_coordinates.csv',
+  file='output/som_neuron_coordinates.csv',
   row.names=FALSE
 )
 
 ## Rewrite the full_factorial_sow_info file to include neuron ids
 full_factorial_sow_info <- fread(
-  file='output/python_output/full_factorial_sow_info.csv',
+  file='output/full_factorial_sow_info.csv',
   header=TRUE
 )
 full_factorial_sow_info$Neuron <- best_som$unit.classif
 
 write.csv(
   x=full_factorial_sow_info,
-  file='output/python_output/full_factorial_sow_info.csv',
+  file='output/full_factorial_sow_info.csv',
   row.names=FALSE
 )
 

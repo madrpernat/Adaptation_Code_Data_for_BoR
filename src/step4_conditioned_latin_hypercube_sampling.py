@@ -89,10 +89,7 @@ def main():
 
     for i, variable in enumerate(variables):
 
-        if variable == ids.NEURON:
-            plot_type = 'hist'
-        else:
-            plot_type = 'kde'
+        plot_type = 'hist' if variable == ids.NEURON else 'kde'
 
         variable_distribution_comparison_plot(
             df1=full_factorial_sow_info,

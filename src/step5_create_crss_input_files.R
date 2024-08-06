@@ -1,3 +1,5 @@
+source('src/utils/clear.R')
+
 library(readxl)
 library(dplyr)
 library(magrittr)
@@ -10,7 +12,7 @@ library(magrittr)
 
 
 # Load the 500 SOW ensemble information
-five_hundred_sow_info = read.csv('output/python_output/500_sow_info.csv')
+five_hundred_sow_info = read.csv('output/500_sow_info.csv')
 
 # Set up paths to read in crmms data
 data_dir <- 'data/eocy2026_crmms_data/'
@@ -99,7 +101,7 @@ for (i in 1:nrow(five_hundred_sow_ic)){
 
 # For each SOW, write out initial condition and demand CRSS input files
 
-output_dir <- 'output/r_output/500_sow_crss_input_files/SystemConditionInput'
+output_dir <- 'output/500_sow_crss_input_files/SystemConditionInput'
 
 for (i in 1:nrow(five_hundred_sow_ic)){
   
@@ -205,7 +207,7 @@ for (i in 1:nrow(five_hundred_sow_ic)){
 # For each SOW, locate flow files and copy over
 
 src_dir <- 'data/crss_flow_files'
-output_dir <- 'output/r_output/500_sow_crss_input_files/FlowInput'
+output_dir <- 'output/500_sow_crss_input_files/FlowInput'
 
 for (i in 1:nrow(five_hundred_sow_ic)){
 

@@ -1,12 +1,5 @@
-# Process policy set data and create barplots representing decision variables
-# Script modified from version provided by Reclamation in June 2022
-# Modified by E Stark August 2023, then M Pernat August 2023
-
-rm(list=ls())
-options( java.parameters = "-Xmx4g" )
-options(scipen = 999)
-
-source('src/utils/library.R')
+source('src/utils/clear.R')
+source('src/utils/policy_analysis_library.R')
 
 src_dir <- 'borg_directories/'
 archive_file_name <- '/borg_run/Archive.txt'

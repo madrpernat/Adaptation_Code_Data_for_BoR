@@ -5,13 +5,13 @@
 
 # Adapted by Madeline Pernat - November 2023
 
-
-source('src/utils/library.R')
+source('src/utils/clear.R')
+source('src/utils/som_library.R')
 
 # Read in scaled cumulative timeseries data
 cumulative_timeseries_scaled <- as.matrix(
   fread(
-    file='output/python_output/full_factorial_cumulative_timeseries_scaled.csv',
+    file='output/full_factorial_cumulative_timeseries_scaled.csv',
     header=FALSE)
 )
 
@@ -230,7 +230,7 @@ params_metrics_df <- params_metrics_df %>%
 
 write.csv(
   x=params_metrics_df,
-  file='output/r_output/som_params_metrics.csv',
+  file='output/som_params_metrics.csv',
   row.names=FALSE
 )
 
@@ -306,7 +306,7 @@ m <- list(
 
 fig <- fig %>% layout(margin=m, font=list(size=16))
 
-saveWidget(as_widget(fig), 'output/r_output/som_params_metrics_pc_plot.html')
+saveWidget(as_widget(fig), 'output/figs/som_params_metrics_pc_plot.html')
 
 
 
@@ -377,7 +377,7 @@ epochs_metrics_df$epochs <- epochs_to_test
 
 write.csv(
   x=epochs_metrics_df,
-  file='output/r_output/som_epochs_metrics_blah.csv',
+  file='output/som_epochs_metrics.csv',
   row.names=FALSE
 )
 

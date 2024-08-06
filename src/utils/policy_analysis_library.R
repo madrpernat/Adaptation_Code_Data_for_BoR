@@ -1,109 +1,19 @@
 require(devtools)
-library(ComplexHeatmap)
-library(tidyr)
-library(patchwork)
-library(xml2)
-library(plyr)
-library(kohonen)
-library(lhs)
-library(stats)
-library(aweSOM)
-library(dplyr)
-library(plotly)
-library(htmlwidgets)
-library(data.table)
-library(plotrix)
+
 library(readxl)
+library(xml2)
+library(dplyr)
+library(tidyr)
+library(reshape2)
+library(ggplot2)
+library(ComplexHeatmap)
 library(circlize)
+library(patchwork)
+library(plotrix)
+library(gridExtra)
 
-############################# SOM HELPER FUNCTIONS #############################
-##################### Coded by Nathan Bonham - March 2022 ######################
-################ (https://doi.org/10.1016/j.envsoft.2022.105491) ###############
-
-# Function to transform continuous values to discrete categories
-continuous_to_discrete <- function(unit_cube, probs, categories) {
-  for (i in 1:(length(probs)-1)) {
-    indices <- which(unit_cube > probs[i] & unit_cube <= probs[i+1])
-    unit_cube[indices] <- categories[i]
-  }
-  return(unit_cube)
-}
-
-
-quantile2radius=function(fraction, x,y,shape){
-  
-  # I took this code from the source code of the supersom function in Kohonen 
-  # package and turned it into a function to calculate the radius given a 
-  # fraction of the max node-to-node distance
-  
-  grid = somgrid(x,y,shape)
-  grid <- check.somgrid(grid)
-  nhbrdist <- unit.distances(grid)
-  radius = quantile(nhbrdist, fraction)
-  
-  return(radius)
-  
-}
-
-
-check.somgrid=function (grd) # taken from Kohonen source code
-{
-  mywarn <- FALSE
-  if (is.null(grd$toroidal)) {
-    mywarn <- TRUE
-    grd$toroidal <- FALSE
-  }
-  if (is.null(grd$neighbourhood.fct)) {
-    mywarn <- TRUE
-    grd$neighbourhood.fct <- factor("bubble", levels = c("bubble", 
-                                                         "gaussian"))
-  }
-  if (mywarn) 
-    warning("Added defaults for somgrid object - ",
-            "you are probably using the somgrid function ", 
-            "from the class library...")
-  grd
-}
-
-
-unit.distances=function (grid, toroidal) # taken from Kohonen source code
-{
-  if (missing(toroidal)) 
-    toroidal <- grid$toroidal
-  if (!toroidal) {
-    if (grid$topo == "hexagonal") {
-      return(as.matrix(stats::dist(grid$pts)))
-    }
-    else {
-      return(as.matrix(stats::dist(grid$pts, method = "maximum")))
-    }
-  }
-  np <- nrow(grid$pts)
-  maxdiffx <- grid$xdim/2
-  maxdiffy <- max(grid$pts[, 2])/2
-  result <- matrix(0, np, np)
-  for (i in 1:(np - 1)) {
-    for (j in (i + 1):np) {
-      diffs <- abs(grid$pts[j, ] - grid$pts[i, ])
-      if (diffs[1] > maxdiffx) 
-        diffs[1] <- 2 * maxdiffx - diffs[1]
-      if (diffs[2] > maxdiffy) 
-        diffs[2] <- 2 * maxdiffy - diffs[2]
-      if (grid$topo == "hexagonal") {
-        result[i, j] <- sum(diffs^2)
-      }
-      else {
-        result[i, j] <- max(diffs)
-      }
-    }
-  }
-  if (grid$topo == "hexagonal") {
-    sqrt(result + t(result))
-  }
-  else {
-    result + t(result)
-  }
-}
+options(java.parameters = "-Xmx4g")
+options(scipen = 999)
 
 ################################################################################
 ######################### BORG OUTPUT HELPER FUNCTIONS #########################
@@ -113,13 +23,13 @@ unit.distances=function (grid, toroidal) # taken from Kohonen source code
 # following order: decision variables, objectives, constraints, metrics.
 condense_policies <- function(
     
-    borg_directory, 
-    archive_file_name, 
-    xml_file_name, 
-    n_powell_tiers, 
-    n_mead_tiers
-    
-  ){
+  borg_directory, 
+  archive_file_name, 
+  xml_file_name, 
+  n_powell_tiers, 
+  n_mead_tiers
+  
+){
   
   # Get objective, metric, and constraint info from xml file
   xml_file_path <- paste0(borg_directory, '/', xml_file_name)
@@ -137,7 +47,7 @@ condense_policies <- function(
   # Read in archive file
   archive_file_path = paste0(borg_directory, archive_file_name)
   archive_df <- read.table(archive_file_path, header=TRUE)
-
+  
   
   # Get column indices for decision variables
   dv_indices <- get_dv_indices(
@@ -175,7 +85,7 @@ condense_policies <- function(
     
     archive_df <- archive_df[, -c(constraint_start:constraint_end)]
   }
-
+  
   
   # Create a Powell dataframe (PTiering) for each policy
   for (j in 1:nrow(archive_df)){
@@ -212,7 +122,7 @@ condense_policies <- function(
     # Reference Elevations, Min Offset, Max Offset, and Primary Release values
     # (columns 2-5) to that of the row with the highest Primary Release volume.
     for (i in 1:(nrow(PTiering) - 1)){
-    
+      
       if (PTiering[i, "PTierEl"] == PTiering[i + 1, "PTierEl"]){
         
         PTiering[i + 1, "MeadRefEl"]    = PTiering[i, "MeadRefEl"]
@@ -947,21 +857,19 @@ create_policy_images <- function(output_dir, condensed_archive, dv_indices){
     
   }
   
-  
 }
-
 
 
 MeadHeatmapMatrix <- function(
     
-    condensed_archive, 
-    dv_indices,
-    max_tiers, 
-    max_elev, 
-    min_elev, 
-    disc_length
-    
-  ){
+  condensed_archive, 
+  dv_indices,
+  max_tiers, 
+  max_elev, 
+  min_elev, 
+  disc_length
+  
+){
   
   # Mead DV indices
   MeadSurplus_idx <- dv_indices$MeadSurplus
@@ -978,7 +886,7 @@ MeadHeatmapMatrix <- function(
   n_policies <- nrow(condensed_archive)
   pool_elevs <- seq(max_elev, min_elev, -1* disc_length)
   pool_elevs <- head(pool_elevs, -1)
-
+  
   hm_df <- data.frame(matrix(
     nrow = length(pool_elevs),
     ncol = n_policies
@@ -1017,8 +925,8 @@ MeadHeatmapMatrix <- function(
     # Create vector to store shortage volume at each discretized elevation
     ## -1s for surplus tier and 0s for normal tier.
     vol_at_elev <- c(
-      rep(  -1, (tier_elevs[1] - tier_elevs[2]) / disc_length  ),
-      rep(   0, (tier_elevs[2] - tier_elevs[3]) / disc_length  )
+      rep(-1, (tier_elevs[1] - tier_elevs[2]) / disc_length),
+      rep(0, (tier_elevs[2] - tier_elevs[3]) / disc_length)
     )
     
     ## Fill in the associated shortage volumes at each discretized elevation
@@ -1026,7 +934,7 @@ MeadHeatmapMatrix <- function(
     for (j in 3:length(tier_vols)){
       vol_at_elev <- append(
         vol_at_elev,
-        rep(  tier_vols[j], (tier_elevs[j] - tier_elevs[j + 1]) / disc_length  )
+        rep(tier_vols[j], (tier_elevs[j] - tier_elevs[j + 1]) / disc_length)
       )
     }
     
@@ -1084,7 +992,6 @@ GetMeadColorScheme <- function(){
   return(colors)
   
 }
-
 
 
 column_mapping <- function(original_col_name){
@@ -1191,6 +1098,7 @@ get_xml_info <- function(xml_file_path){
   
 }
 
+
 get_dv_indices <- function(condensed, col_names, n_powell_tiers, n_mead_tiers){
   
   if (condensed){
@@ -1218,13 +1126,13 @@ get_dv_indices <- function(condensed, col_names, n_powell_tiers, n_mead_tiers){
     
   }
   
-  PTierEl      <- c(       PTierEl_first:(PTierEl_first + n_powell_tiers - 1)       )
-  PRels        <- c(        PRels_first:(PRels_first + n_powell_tiers - 1)          )
-  MeadRefs     <- c(      MeadRefs_first:(MeadRefs_first + n_powell_tiers - 1)      )
-  BalMaxOffset <- c(  BalMaxOffset_first:(BalMaxOffset_first + n_powell_tiers - 1)  )
-  BalMinOffset <- c(  BalMinOffset_first:(BalMinOffset_first + n_powell_tiers - 1)  )
-  MeadEl       <- c(          MeadEl_first:(MeadEl_first + n_mead_tiers - 1)        )
-  MeadV        <- c(           MeadV_first:(MeadV_first + n_mead_tiers - 1)         )
+  PTierEl <- c(PTierEl_first:(PTierEl_first + n_powell_tiers - 1))
+  PRels <- c(PRels_first:(PRels_first + n_powell_tiers - 1))
+  MeadRefs <- c(MeadRefs_first:(MeadRefs_first + n_powell_tiers - 1))
+  BalMaxOffset <- c(BalMaxOffset_first:(BalMaxOffset_first + n_powell_tiers - 1))
+  BalMinOffset <- c(BalMinOffset_first:(BalMinOffset_first + n_powell_tiers - 1))
+  MeadEl <- c(MeadEl_first:(MeadEl_first + n_mead_tiers - 1))
+  MeadV <- c(MeadV_first:(MeadV_first + n_mead_tiers - 1))
   
   # Return
   list(
@@ -1239,8 +1147,3 @@ get_dv_indices <- function(condensed, col_names, n_powell_tiers, n_mead_tiers){
   )
   
 }
-
-
-
-
-
