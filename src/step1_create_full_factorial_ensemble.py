@@ -15,9 +15,9 @@ def main():
     os.chdir(parent_dir)
 
     # Constants
-    traces_timeseries_file = "../data/traces_timeseries.csv"
-    scd_file = "../data/scd_csv.csv"
-    output_dir = "python_output"
+    traces_timeseries_file = "data/traces_timeseries.csv"
+    scd_file = "data/scd_csv.csv"
+    output_dir = "output"
     start_year = 2027
     end_year = 2057
     drought_threshold = 14.65
@@ -42,7 +42,6 @@ def main():
     ## Calculate and concatenate trace metrics
     traces_metrics = calculate_trace_metrics(
         traces_timeseries=traces_timeseries,
-        n_traces=n_traces,
         drought_threshold=drought_threshold
     )
     traces_info = pd.concat(

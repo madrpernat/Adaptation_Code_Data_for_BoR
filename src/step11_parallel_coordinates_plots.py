@@ -2,7 +2,7 @@ import hiplot as hip
 import os
 import pandas as pd
 
-from src.utils import pc_configs
+from src.configs import pc_configs
 
 
 def main():

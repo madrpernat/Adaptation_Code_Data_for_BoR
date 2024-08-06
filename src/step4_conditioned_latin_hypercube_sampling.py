@@ -23,13 +23,13 @@ def main():
 
     ## Read in data
     full_factorial_sow_info = pd.read_csv(
-        filepath_or_buffer='output/python_output/full_factorial_sow_info.csv'
+        filepath_or_buffer='output/full_factorial_sow_info.csv'
     )
     cumulative_timeseries_array = np.load(
-        file='output/python_output/full_factorial_cumulative_timeseries.npy'
+        file='output/full_factorial_cumulative_timeseries.npy'
     )
     cumulative_timeseries_array_scaled = pd.read_csv(
-        filepath_or_buffer='output/python_output/full_factorial_cumulative_timeseries_scaled.csv',
+        filepath_or_buffer='output/full_factorial_cumulative_timeseries_scaled.csv',
         header=None
     ).to_numpy().T
 
@@ -42,9 +42,9 @@ def main():
     clhs_df = full_factorial_sow_info[variables]
 
     ## Generate uniform cLHS samples. The objective function consists of three components:
-    ## 1) Spread of continuous variables,
-    ## 2) Spread of the discrete variable ('Neuron' is the only discrete variable),
-    ## 3) Preservation of correlation among variables.
+    ##      1) Spread of continuous variables,
+    ##      2) Spread of the discrete variable ('Neuron' is the only discrete variable),
+    ##      3) Preservation of correlation among variables.
     ## The 'weights' parameter adjusts the importance of these components.
     ## Due to the different magnitudes of variables and the higher number of continuous variables (see clhs.py for
     ## details), we experimented with various weightings. We compared histograms of variable distributions between the
@@ -68,15 +68,15 @@ def main():
     # We now have three dataframes describing the 500 SOW ensemble. One contains general info for each SOW, and the
     # others are the scaled and unscaled cumulative timeseries for each SOW. Save these data as csv.
     sampled_sows_info.to_csv(
-        path_or_buf='output/python_output/500_sow_info.csv',
+        path_or_buf='output/500_sow_info.csv',
         index=False
     )
     pd.DataFrame(sampled_sows_cumulative_timeseries).to_csv(
-        path_or_buf='output/python_output/500_sow_cumulative_timeseries.csv',
+        path_or_buf='output/500_sow_cumulative_timeseries.csv',
         index=False
     )
     pd.DataFrame(sampled_sows_cumulative_timeseries_scaled).to_csv(
-        path_or_buf='output/python_output/500_sow_cumulative_timeseries_scaled.csv',
+        path_or_buf='output/500_sow_cumulative_timeseries_scaled.csv',
         index=False
     )
 
@@ -127,7 +127,7 @@ def main():
     )
 
     fig.savefig(
-        fname='output/python_output/figs/full_factorial_vs_500_ensemble_variable_distributions.png',
+        fname='output/figs/full_factorial_vs_500_ensemble_variable_distributions.png',
         dpi=400,
         bbox_inches='tight'
     )

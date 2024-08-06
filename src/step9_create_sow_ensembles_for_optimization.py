@@ -13,11 +13,11 @@ def main():
     os.chdir(parent_dir)
 
     five_hundred_sow_info = pd.read_csv(
-        filepath_or_buffer='output/python_output/500_sow_info.csv'
+        filepath_or_buffer='output/500_sow_info.csv'
     )
 
-    src_dir = 'output/r_output/crss_input_files'
-    output_dir = 'output/python_output/sow_ensembles_for_optimization/'
+    src_dir = 'output/crss_input_files'
+    output_dir = 'output/sow_ensembles_for_optimization/'
 
     # Experiments
     # 1) Random sample cluster 0

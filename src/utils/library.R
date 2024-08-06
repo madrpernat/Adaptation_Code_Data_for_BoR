@@ -59,7 +59,8 @@ check.somgrid=function (grd) # taken from Kohonen source code
                                                          "gaussian"))
   }
   if (mywarn) 
-    warning("Added defaults for somgrid object - ", "you are probably using the somgrid function ", 
+    warning("Added defaults for somgrid object - ",
+            "you are probably using the somgrid function ", 
             "from the class library...")
   grd
 }

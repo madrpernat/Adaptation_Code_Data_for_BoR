@@ -3,9 +3,9 @@ import matplotlib
 import numpy as np
 import os
 import pandas as pd
-from scipy.cluster.hierarchy import cut_tree, linkage
+from scipy.cluster.hierarchy import linkage
 
-from src.utils import animation_configs
+from src.configs import clustering_animation_configs
 from src.utils.animation_functions import create_animation
 from src.utils.functions_library import create_and_save_dendrogram
 
@@ -20,10 +20,10 @@ def main():
     os.chdir(parent_dir)
 
     som_codes_scaled = pd.read_csv(
-        filepath_or_buffer='output/r_output/som_codes_scaled.csv'
+        filepath_or_buffer='output/som_codes_scaled.csv'
     )
     neuron_coordinates = pd.read_csv(
-        filepath_or_buffer='output/r_output/som_neuron_coordinates.csv'
+        filepath_or_buffer='output/som_neuron_coordinates.csv'
     )
 
     # Perform hierarchical clustering on the neuron weights using different linkage methods
@@ -55,50 +55,50 @@ def main():
         linkage_name="Average Linkage",
         z=z_avg_link,
         neuron_labels=neuron_labels,
-        filename='output/python_output/figs/average_linkage_dendrogram.png'
+        filename='output/figs/average_linkage_dendrogram.png'
     )
     create_and_save_dendrogram(
         linkage_name="Complete Linkage",
         z=z_complete_link,
         neuron_labels=neuron_labels,
-        filename='output/python_output/figs/complete_linkage_dendrogram.png'
+        filename='output/figs/complete_linkage_dendrogram.png'
     )
     create_and_save_dendrogram(
         linkage_name="Centroid Linkage",
         z=z_centroid_link,
         neuron_labels=neuron_labels,
-        filename='output/python_output/figs/centroid_linkage_dendrogram.png'
+        filename='output/figs/centroid_linkage_dendrogram.png'
     )
     create_and_save_dendrogram(
         linkage_name="Ward Linkage",
         z=z_ward_link,
         neuron_labels=neuron_labels,
-        filename='output/python_output/figs/ward_linkage_dendrogram.png'
+        filename='output/figs/ward_linkage_dendrogram.png'
     )
 
     # Create animation for each linkage method
     colors = distinctipy.get_colors(52)
 
     create_animation(
-        config=animation_configs.avg_link,
+        config=clustering_animation_configs.avg_link,
         z=z_avg_link,
         neuron_coordinates=neuron_coordinates,
         colors=colors
     )
     create_animation(
-        config=animation_configs.complete_link,
+        config=clustering_animation_configs.complete_link,
         z=z_complete_link,
         neuron_coordinates=neuron_coordinates,
         colors=colors
     )
     create_animation(
-        config=animation_configs.centroid_link,
+        config=clustering_animation_configs.centroid_link,
         z=z_centroid_link,
         neuron_coordinates=neuron_coordinates,
         colors=colors
     )
     create_animation(
-        config=animation_configs.ward_link,
+        config=clustering_animation_configs.ward_link,
         z=z_ward_link,
         neuron_coordinates=neuron_coordinates,
         colors=colors
@@ -115,7 +115,7 @@ def main():
     #     {'Neuron': np.arange(1, 53), 'Cluster': cut_1.loc[:, 0]}
     # )
     # neuron_clusters_1.to_csv(
-    #     path_or_buf="output/python_output/neuron_clusters_19.csv",
+    #     path_or_buf="output/neuron_clusters_19.csv",
     #     index=False
     # )
     #
@@ -127,12 +127,10 @@ def main():
     #     {"Neuron": np.arange(1, 53), "Cluster": cut_2.loc[:, 0]}
     # )
     # neuron_clusters_2.to_csv(
-    #     path_or_buf="output/python_output/neuron_clusters_8.csv",
+    #     path_or_buf="output/neuron_clusters_8.csv",
     #     index=False
     # )
 
 
 if __name__ == '__main__':
     main()
-
-

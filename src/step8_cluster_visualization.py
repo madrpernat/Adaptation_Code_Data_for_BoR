@@ -19,10 +19,10 @@ def main():
     os.chdir(parent_dir)
 
     five_hundred_sow_info = pd.read_csv(
-        filepath_or_buffer='output/python_output/500_sow_info.csv'
+        filepath_or_buffer='output/500_sow_info.csv'
     )
     five_hundred_sow_cumulative_timeseries = pd.read_csv(
-        filepath_or_buffer='output/python_output/500_sow_cumulative_timeseries.csv'
+        filepath_or_buffer='output/500_sow_cumulative_timeseries.csv'
     )
     neuron_cluster_mapping = pd.read_csv(
         filepath_or_buffer='data/neuron_clusters.csv'
@@ -36,7 +36,7 @@ def main():
 
     column_order = [ids.SOW] + [col for col in merged_df.columns if col != ids.SOW]
     merged_df[column_order].to_csv(
-        path_or_buf='output/python_output/500_sow_info.csv',
+        path_or_buf='output/500_sow_info.csv',
         index=False
     )
 
@@ -51,7 +51,7 @@ def main():
     )
 
     fig.savefig(
-        fname='output/python_output/figs/hclusters_som_cumulative_timeseries_view.png',
+        fname='output/figs/hclusters_som_cumulative_timeseries_view.png',
         dpi=400,
         bbox_inches='tight'
     )
@@ -59,4 +59,3 @@ def main():
 
 if __name__ == '__main__':
     main()
-
