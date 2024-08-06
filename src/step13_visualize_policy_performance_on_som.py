@@ -100,16 +100,16 @@ def main():
         # For each objective, check whether each SOW met or didn't meet threshold
         for objective, threshold in zip(objectives, thresholds):
 
+            objective_values = policy_data[objective]
+            threshold_met = objective_values < threshold
+            thresholds_met[objective] = threshold_met
+
             # Get objective settings to create string acceptability defn
             obj_settings = objective_settings[objective]
             label = obj_settings['label']
             scale = obj_settings['scale']
             unit = obj_settings['unit']
             n_digits = obj_settings['n_digits']
-
-            objective_values = policy_data[objective]
-            threshold_met = objective_values < threshold
-            thresholds_met[objective] = threshold_met
 
             op = '<' if scale > 0 else '>'
             threshold_label = threshold / scale
