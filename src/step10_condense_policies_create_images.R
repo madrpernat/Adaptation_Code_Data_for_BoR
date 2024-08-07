@@ -5,9 +5,9 @@ src_dir <- 'borg_directories/'
 archive_file_name <- '/borg_run/Archive.txt'
 n_powell_tiers <- 5
 n_mead_tiers <- 8
-max_mead_elev = 1220
-max_mead_shortage_elev = 1145
-min_mead_elev = 895
+max_mead_elev <- 1220
+max_mead_shortage_elev <- 1145
+min_mead_elev <- 895
 
 
 borg_experiments <- list.dirs(
