@@ -16,16 +16,16 @@ Only the source code is provided on GitHub due to storage constraints. To access
      git clone https://github.com/madrpernat/Adaptation_Grant_Code_for_BoR.git
      ```
    - Place the extracted folders into the cloned repository directory to match the following structure at the root level:
-	```
-	Adaptation_Code_Data_for_BoR
-	│	Adaptation_Code_Data_for_BoR.R
-	│   environment.yaml
-	│   README.md
-	│
-	├───borg_directories/
-	├───data/
-	├───output/
-	├───riversmart_study__new_experiment_policies_500_sows/
-	└───src/
-	```
+     ```
+     Adaptation_Code_Data_for_BoR
+     │	 Adaptation_Code_Data_for_BoR.R
+     │   environment.yaml
+     │   README.md
+     │
+     ├───borg_directories/
+     ├───data/
+     ├───output/
+     ├───riversmart_study__new_experiment_policies_500_sows/
+     └───src/
+     ```
 
