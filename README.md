@@ -13,7 +13,7 @@ Only the source code is provided on GitHub due to storage constraints. To access
 2. **Prepare the Repository:**
    - Clone the GitHub repository to your local machine:
      ```
-     git clone https://github.com/madrpernat/Adaptation_Grant_Code_for_BoR.git
+     git clone https://github.com/madrpernat/Adaptation_Code_Data_for_BoR.git
      ```
    - Place the extracted folders into the cloned repository directory to match the following structure at the root level:
      ```
