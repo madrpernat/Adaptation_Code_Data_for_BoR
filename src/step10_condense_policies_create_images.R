@@ -63,7 +63,7 @@ for (experiment in borg_experiments){
   create_policy_images(
     output_dir = output_dir,
     condensed_archive = condensed_archive,
-    dv_indices
+    dv_indices = dv_indices
   )
   
   # Create Mead policy heatmap
