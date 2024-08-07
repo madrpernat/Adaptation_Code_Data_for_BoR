@@ -30,7 +30,7 @@ Only the source code is provided on GitHub due to storage constraints. To access
      ```
 
 ## Running the Code
-The contents of the fully cloned repository are the result of running all scripts (`step01` through `step14`) in the `src` folder, as well as the associated Borg experiments and RiverSMART study (e.g., the SOW ensembles created in `step09` and written to `output/sow_ensembles_for_optimization` were copied over to the corresponding experiment directories in `borg_directories/`, and the CRSS input files created in `step05` for the 500 SOW ensemble were copied to `riversmart_study__new_experiment_policies_500_sows/Model/Inputs` to perform the policy reevaluations).
+The contents of the fully cloned repository are the result of running all scripts (`step01` through `step14`) in the `src` folder, as well as the associated Borg experiments and RiverSMART study (e.g., the SOW ensembles created in `step09` and written to `output/sow_ensembles_for_optimization` were copied over to the corresponding experiment directories in `borg_directories/`, and the CRSS input files created for the 500 SOW ensemble in `step05` were copied to `riversmart_study__new_experiment_policies_500_sows/Model/Inputs` to perform the policy reevaluations).
 
 There are several components of this study that someone may want to change, such as:
    - The number of SOWs sampled in `step04` (i.e., instead of creating a 500 SOW ensemble, one could create a 200 SOW or 1000 SOW ensemble)
