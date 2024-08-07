@@ -18,7 +18,7 @@ Only the source code is provided on GitHub due to storage constraints. To access
    - Place the extracted folders into the cloned repository directory to match the following structure at the root level:
      ```
      Adaptation_Code_Data_for_BoR
-     │	Adaptation_Code_Data_for_BoR.R
+     │   Adaptation_Code_Data_for_BoR.R
      │   environment.yaml
      │   README.md
      │
