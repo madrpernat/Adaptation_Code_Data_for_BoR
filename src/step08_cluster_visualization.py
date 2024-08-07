@@ -8,7 +8,7 @@ from src.utils import ids
 from src.utils.functions_library import create_cumulative_timeseries_som_view
 
 
-# Following step 6, data/neuron_clusters.csv was manually made.
+# Following step07, data/neuron_clusters.csv was manually made.
 
 
 def main():
