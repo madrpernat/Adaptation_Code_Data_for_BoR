@@ -58,13 +58,17 @@ There are several components of this study that someone may want to change, such
            ```sh
            conda activate the_name_that_you_gave_the_environment
            ```
+         - Navigate to project directory
+           ```sh
+           cd path_to_project_directory
+           ```
          - Set the `PYTHONPATH` variable temporarily for the current session:
            ```sh
            set PYTHONPATH=.
            ```
-         - Navigate to and run the script you want to run:
+         - Run the script you want to run:
            ```sh
-           python path_to_project_directory/src/step_________.py
+           python path_to_script.py
            ```
       2. **Within PyCharm**
          - Open PyCharm and select "Open" from the welcome screen or `File > Open`. Navigate to and select the cloned repository directory (`Adaptation_Code_Data_for_BoR`).
