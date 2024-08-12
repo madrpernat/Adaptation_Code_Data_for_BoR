@@ -1,5 +1,22 @@
 # Adaptation_Code_Data_for_BoR
-All code and data necessary to replicate the work done in Phases III and IV.
+All code and data necessary to replicate the work done in Phases III and IV. The `src` folder contains 14 scripts, each with a specific purpose as described in the table below.
+
+Script   | Purpose
+-------- | -------
+`step01` | Create the full-factorial SOW ensemble
+`step02` | Perform hyperparameter tuning for the SOM
+`step03` | Fit the SOM using best hyperparameters from `step02`
+`step04` | Perform Uniform Conditioned Latin Hypercube sampling to narrow down the full-factorial ensemble to 500 SOWs
+`step05` | Create CRSS input files for the 500 SOW ensemble
+`step06` | Visualize different SOW characteristics on the SOM
+`step07` | Perform hierarchical clustering of the SOM
+`step08` | Visualize the neuron clusters on the SOM
+`step09` | Sample SOWs from neuron clusters to create multiple SOW ensembles for robust optimization
+`step10` | Analyze robust optimization archives: condense policies and create policy images
+`step11` | Create parallel-coordinates plots of the robust optimization archives
+`step12` | Create CRSS input files for the robust optimization archice policies
+`step13` | Consolidate RiverSMART study data
+`step14` | Visualize any robust optimization archive policy's objective or acceptability performance on the SOM
 
 ## Cloning the Repository
 Only the source code is provided on GitHub due to storage constraints. To access all files and data associated with this project, please follow these steps:
